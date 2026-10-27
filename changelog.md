@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.1.0] - 2026-10-27
 
+### Added (배포)
+- GitHub 저장소 `changwoojung7-sys/Electric-Sequence` (main) 첫 업로드 — Cloudflare Pages 배포용. `.gitignore`로 작업 임시 파일(`scratch*`)·`참고자료/`·원본 PDF 폴더 제외.
+
 ### Changed (사용자 지적: 5단계 배관 절단은 한쪽 끝에서만 — 18과제 전체)
 - 배관마다 **한쪽은 연결만, 반대쪽 끝에서만 밀착 재단**하도록 다시 구성 (이전: 양쪽 끝 모두 재단).
   - **J박스 쪽은 연결만** ➜ J박스 양쪽·아래의 컨트롤박스와 메인 배전반 쪽에서 절단.
