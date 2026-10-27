@@ -1,0 +1,16 @@
+# 작업용 임시 파일
+scratch/
+scratch_*.png
+
+# 원본·개인 자료 (웹 배포 제외)
+참고자료/
+전기기능사 실기 공개문제/
+
+# 기타
+.vscode/
+.claude/
+__pycache__/
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전기기능사 실기 인터랙티브 교육관 - 01번 공개문제</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/board.css">
+</head>
+<body>
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <span>⚡</span> 전기기능사 실기 인터랙티브 교육관
+      </div>
+      <span class="brand-tag">공개 18과제 완벽 마스터</span>
+      <a href="intro.html" class="brand-tag" style="text-decoration: none; border-color: #f59e0b; color: #fbbf24;" title="이 프로그램 소개">ℹ️ 소개</a>
+
+      <!-- 문제 선택 드롭다운 -->
+      <div class="problem-selector-wrapper">
+        <label for="problem-select" class="select-label">과제 선택:</label>
+        <select id="problem-select" class="problem-select">
+          <option value="1" selected>공개문제 01번 (급배수 - 자동 FLS·X ➜ MC1 / 수동 T ➜ MC2, 트립 FR 경보)</option>
+          <option value="2">공개문제 02번 (급배수 교대 - FLS·X·T ➜ FR ➜ MC1 ⇄ MC2)</option>
+          <option value="3">공개문제 03번 (급수 교대 - FLS 또는 T ➜ X ➜ FR ➜ MC1 ⇄ MC2)</option>
+          <option value="4">공개문제 04번 (급수 교대 - FLS·PB1 ➜ FR ➜ MC1 ⇄ MC2, T로 MC2 소자)</option>
+          <option value="5">공개문제 05번 (교대 ➜ 동시 - FR 교대, t초 후 MC1·MC2 동시)</option>
+          <option value="6">공개문제 06번 (동시 ➜ 교대 - 자동 MC1·MC2 동시 / 수동 t초 후 FR 교대)</option>
+          <option value="7">공개문제 07번 (순차 - ① M1 ➜ ② M2 ➜ ③ 정지 반복)</option>
+          <option value="8">공개문제 08번 (동시 운전 - 자동 MC1·MC2 동시·YL 점멸 / 수동 t초 후 정지)</option>
+          <option value="9">공개문제 09번 (급수 - 자동 FLS ➜ MC1 / 수동 PB1 ➜ MC1, t초 후 MC2)</option>
+          <option value="10">공개문제 10번 (순차/인터록 - T1, T2, X1, X2)</option>
+          <option value="11">공개문제 11번 (인터록 - PB1·T1 / PB2·T2, LS1·LS2)</option>
+          <option value="12">공개문제 12번 (순차 - X1·T1·MC1 ➜ X2·MC2, LS2·T2)</option>
+          <option value="13">공개문제 13번 (순차 - PB1·LS1 ➜ X1·T1, LS2 ➜ MC1 / T1 ➜ X2·MC2·T2)</option>
+          <option value="14">공개문제 14번 (조건 운전 - LS1·LS2 ➜ PB1 MC1 / PB2 MC2, 한시 정지)</option>
+          <option value="15">공개문제 15번 (조건 운전 - LS 하나 ➜ PB1 MC1 / LS 모두 ➜ PB2 MC2)</option>
+          <option value="16">공개문제 16번 (타이머 - LS1·T1 ➜ MC1 / LS2·T2 ➜ MC2·WL)</option>
+          <option value="17">공개문제 17번 (배타 운전 - LS 하나만 ➜ PB1 MC1 / T1 후 PB2 MC2·WL)</option>
+          <option value="18">공개문제 18번 (선택 운전 - LS1만 ➜ PB1 MC1 / LS2만 ➜ PB2 MC2, t초 후 WL)</option>
+        </select>
+      </div>
+    </div>
+
+  </header>
+
+  <!-- 7단계 파이프라인 진행 상태 바 -->
+  <nav class="pipeline-bar">
+    <div class="stage-step stage-step-doc" data-stage="0" id="step-btn-0">
+      <span class="step-num">0</span>
+      <span>📄 공개문제 보기</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step active" data-stage="1" id="step-btn-1">
+      <span class="step-num">1</span>
+      <span>1단계: 기구 배치 (400×420)</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="2" id="step-btn-2">
+      <span class="step-num">2</span>
+      <span>2단계: 주회로 결선</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="3" id="step-btn-3">
+      <span class="step-num">3</span>
+      <span>3단계: 핀번호 & 그루핑</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="4" id="step-btn-4">
+      <span class="step-num">4</span>
+      <span>4단계: 보조회로 배선</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="5" id="step-btn-5">
+      <span class="step-num">5</span>
+      <span>5단계: 배관 제도 & 새들</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="6" id="step-btn-6">
+      <span class="step-num">6</span>
+      <span>6단계: 기구 장착 & 입선</span>
+    </div>
+    <span class="step-arrow">▶</span>
+    <div class="stage-step" data-stage="7" id="step-btn-7">
+      <span class="step-num">7</span>
+      <span>7단계: 동작 테스트</span>
+    </div>
+  </nav>
+
+  <!-- 메인 작업 대시보드 레이아웃 -->
+  <main class="main-layout">
+    <!-- 좌측 사이드바: 도면 뷰어 & 12세 설명서 -->
+    <aside class="sidebar-panel">
+      <!-- 실기 꿀팁 (단계 안내) -->
+      <section class="panel-card">
+        <h3 class="card-title">💡 실기 꿀팁</h3>
+        <div id="step-guide-box" class="guide-box">
+          🪵 <b>초기 상태</b>: 가로 400mm × 세로 420mm 깨끗한 미송 제어판입니다. 아래 <b>'1. 치수선 긋기'</b> 버튼을 눌러 작업을 시작해 보세요!
+        </div>
+      </section>
+
+      <!-- 공식 출제 도면 (왼쪽 영역 높이를 꽉 채움, 분할선으로 폭 조절) -->
+      <section class="panel-card blueprint-card">
+        <div class="card-title-row">
+          <h3 class="card-title">📜 국가기술자격 공식 도면</h3>
+          <button id="btn-doc-toggle" class="doc-toggle" title="공개문제 문제지 전체를 페이지 넘겨 보기">📄 문제지 전체</button>
+        </div>
+        <div class="doc-nav" id="doc-nav-side">
+          <button class="doc-prev" title="이전 페이지">◀</button>
+          <span class="doc-page-label">1 / 11</span>
+          <button class="doc-next" title="다음 페이지">▶</button>
+        </div>
+        <div class="blueprint-thumbnail-wrapper" id="blueprint-btn" title="클릭하면 원본 도면이 크게 열립니다!">
+          <img src="assets/images/board_layout.png" alt="제어판 내부 기구 배치도" class="blueprint-thumbnail" id="blueprint-img">
+          <div class="blueprint-badge">🔍 도면 크게보기 (클릭)</div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- 공식 도면 ↔ 작업 화면 크기 조절 손잡이 (좌우로 끌기, 더블클릭 = 기본 크기) -->
+    <div class="layout-splitter" id="layout-splitter" title="좌우로 끌어 공식 도면/작업 화면 크기 조절 (더블클릭: 기본 크기)"><span></span></div>
+
+    <!-- 우측 메인 작업 영역: 400x420 실물 제어판 시뮬레이터 -->
+    <section class="workbench-area">
+      <!-- 작업대 헤더 -->
+      <div class="workbench-header">
+        <div class="workbench-title-group">
+          <h2>🪵 제어판 기구 배치 시뮬레이터 (400mm × 420mm)</h2>
+          <p>치수선 제도 → 기구 부착(홈 방향 확인) → 마스킹 테이프 이름표 → 배관도 단자대 마킹</p>
+        </div>
+
+        <!-- 뷰 컨트롤: 배속 조절 및 줌(확대/축소) 컨트롤 -->
+        <div class="view-controls">
+          <!-- 돋보기 확대/축소 컨트롤 -->
+          <div class="zoom-controls">
+            <button id="btn-zoom-in" class="zoom-btn" title="기판 확대 (마우스 휠 업)">🔍+</button>
+            <span id="zoom-level-label" class="zoom-label">100%</span>
+            <button id="btn-zoom-out" class="zoom-btn" title="기판 축소 (마우스 휠 다운)">🔍-</button>
+            <button id="btn-zoom-reset" class="zoom-btn" title="원래 크기로 리셋">100%</button>
+            <button id="btn-focus-tb5" class="zoom-btn focus-btn" title="상단 단자대(TB5) 확대보기">상단TB5 🔍</button>
+            <button id="btn-focus-tb6" class="zoom-btn focus-btn" title="하단 단자대(TB6) 확대보기">하단TB6 🔍</button>
+          </div>
+
+          <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px;"></div>
+
+          <!-- 배속 조절 -->
+          <div class="speed-btn-group">
+            <button class="speed-btn active" data-speed="1.0">1.0x</button>
+            <button class="speed-btn" data-speed="1.5">1.5x</button>
+            <button class="speed-btn" data-speed="2.0">2.0x</button>
+          </div>
+
+          <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 4px;"></div>
+
+          <button id="btn-reset-all" class="zoom-btn layout-btn reset-all-btn" title="모든 단계의 작업을 처음 상태로 되돌립니다">⟲ 전체 초기화</button>
+
+          <!-- 화면 공간 확보: 단계 버튼 접기 · 크게 보기(집중 모드) -->
+          <button id="btn-toggle-toolbar" class="zoom-btn layout-btn" title="단계 버튼 영역 접기/펼치기">▲ 도구 접기</button>
+          <button id="btn-focus-mode" class="zoom-btn layout-btn focus-mode-btn" title="상단 메뉴·사이드바를 숨기고 작업 화면을 크게 보기 (단축키 F, 나가기 Esc)">⛶ 크게 보기</button>
+        </div>
+      </div>
+
+      <!-- 크게 보기 모드 전용: 꿀팁 안내 미니 창 (사이드바 내용 자동 복사) -->
+      <div id="focus-guide" class="focus-guide">
+        <button id="focus-guide-toggle" class="focus-guide-toggle" title="안내 창 접기/펼치기">💡 안내 ▾</button>
+        <div id="focus-guide-box" class="focus-guide-box"></div>
+      </div>
+
+      <!-- 1단계 인터랙션 툴바 -->
+      <div class="action-toolbar" id="stage1-toolbar">
+        <button id="btn-play-all" class="btn btn-primary">
+          <span>▶</span> 전체 자동 시연
+        </button>
+        <button id="btn-draw-lines" class="btn btn-secondary">
+          <span>📐</span> 1. 치수선 긋기
+        </button>
+        <button id="btn-mount-comps" class="btn btn-secondary">
+          <span>🔩</span> 2. 기구 부착
+        </button>
+        <button id="btn-masking-tape" class="btn btn-secondary">
+          <span>🏷️</span> 3. 기구 이름표
+        </button>
+        <button id="btn-terminal-marks" class="btn btn-accent">
+          <span>✍️</span> 4. 단자대 핀 마킹 (배관도 연동)
+        </button>
+        <button id="btn-reset" class="btn btn-danger">
+          <span>↺</span> 기판 초기화
+        </button>
+        <button id="btn-goto-stage2" class="btn btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); margin-left: auto;">
+          <span>⚡</span> 2단계 주회로 결선 진행 ▶
+        </button>
+      </div>
+
+      <!-- 2단계 주회로 결선 인터랙션 툴바 -->
+      <div class="action-toolbar" id="stage2-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage2-play-all" class="btn btn-primary">
+          <span>▶</span> 주회로 전체 결선 시연
+        </button>
+        <button id="btn-stage2-step1" class="btn btn-success" style="background: #15803d; color: #fff; border-color: #eab308;">
+          <span>1.</span> ⚡ PE 접지선 결선 (최우선)
+        </button>
+        <button id="btn-stage2-step2" class="btn btn-secondary">
+          <span>2.</span> TB1 ➜ MCCB 1차
+        </button>
+        <button id="btn-stage2-step3" class="btn btn-secondary">
+          <span>3.</span> MCCB ➜ EOCR
+        </button>
+        <button id="btn-stage2-step4" class="btn btn-accent">
+          <span>4.</span> 퓨즈 1차 분기 (EOCR 우측)
+        </button>
+        <button id="btn-stage2-step5" class="btn btn-secondary">
+          <span>5.</span> EOCR ➜ MC1, MC2
+        </button>
+        <button id="btn-stage2-step6" class="btn btn-secondary">
+          <span>6.</span> MC ➜ TB2, TB3 모터
+        </button>
+        
+        <!-- 상별 필터 버튼 그룹 -->
+        <div class="phase-filter-group" style="display: inline-flex; gap: 4px; background: rgba(15,23,42,0.6); padding: 3px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+          <span style="font-size: 11px; color: #94a3b8; align-self: center; padding: 0 4px; font-weight: bold;">상별 필터:</span>
+          <button class="filter-btn active" data-phase="ALL">전체</button>
+          <button class="filter-btn phase-pe" data-phase="PE" style="color: #22c55e; font-weight: bold;">PE(녹황)</button>
+          <button class="filter-btn phase-l1" data-phase="L1" style="color: #d97706;">L1(갈)</button>
+          <button class="filter-btn phase-l2" data-phase="L2" style="color: #cbd5e1;">L2(흑)</button>
+          <button class="filter-btn phase-l3" data-phase="L3" style="color: #94a3b8;">L3(회)</button>
+        </div>
+
+        <button id="btn-stage2-clear" class="btn btn-danger">
+          <span>↺</span> 배선 초기화
+        </button>
+        <button id="btn-goto-stage1" class="btn btn-secondary">
+          <span>◀</span> 1단계 기구배치로
+        </button>
+        <button id="btn-goto-stage3" class="btn btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); margin-left: auto;">
+          <span>📜</span> 3단계 핀번호 & 그루핑 진행 ▶
+        </button>
+      </div>
+
+      <!-- 3단계 핀번호 & 그루핑 인터랙션 툴바 -->
+      <div class="action-toolbar" id="stage3-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage3-play-all" class="btn btn-primary">
+          <span>▶</span> 전체 핀번호 & 그루핑 시연
+        </button>
+        <button id="btn-stage3-write-pins" class="btn btn-accent">
+          <span>✍️</span> 핀번호 전체 쓰기
+        </button>
+        <button id="btn-stage3-ref-internal" class="btn btn-secondary">
+          <span>📖</span> 기구 내부결선도 보기
+        </button>
+        <button id="btn-goto-stage2-back" class="btn btn-secondary">
+          <span>◀</span> 2단계 주회로로
+        </button>
+        <button id="btn-goto-stage4" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); margin-left: auto;">
+          <span>⚡</span> 4단계 보조회로 배선 진행 ▶
+        </button>
+      </div>
+
+      <!-- 4단계 보조회로 배선 인터랙션 툴바 -->
+      <div class="action-toolbar" id="stage4-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage4-play-all" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+          <span>▶</span> 보조회로 전체 자동 배선
+        </button>
+        <button id="btn-stage4-fls" class="btn btn-accent" style="background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #60a5fa;">
+          <span>⚡</span> [최우선] FLS 7·8·1
+        </button>
+        
+        <!-- 15대 그루핑 칩 선택 바 -->
+        <div class="aux-group-chips" style="display: inline-flex; flex-wrap: wrap; gap: 4px; background: rgba(15,23,42,0.7); padding: 3px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); align-items: center;">
+          <span style="font-size: 11px; color: #fbbf24; font-weight: bold; padding: 0 4px;">전위 루프:</span>
+          <button class="stage4-group-chip" data-group="1" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">①</button>
+          <button class="stage4-group-chip" data-group="2" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">②</button>
+          <button class="stage4-group-chip" data-group="3" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">③</button>
+          <button class="stage4-group-chip" data-group="4" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">④</button>
+          <button class="stage4-group-chip" data-group="5" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑤</button>
+          <button class="stage4-group-chip" data-group="6" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑥</button>
+          <button class="stage4-group-chip" data-group="7" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑦</button>
+          <button class="stage4-group-chip" data-group="8" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑧</button>
+          <button class="stage4-group-chip" data-group="9" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑨</button>
+          <button class="stage4-group-chip" data-group="10" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑩</button>
+          <button class="stage4-group-chip" data-group="11" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑪</button>
+          <button class="stage4-group-chip" data-group="12" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑫</button>
+          <button class="stage4-group-chip" data-group="13" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑬</button>
+          <button class="stage4-group-chip" data-group="14" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑭</button>
+          <button class="stage4-group-chip" data-group="15" style="background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; cursor: pointer;">⑮</button>
+          <button id="btn-stage4-show-all" title="배선한 보조회로 전체 보기" style="background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #38bdf8; color: #ffffff; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 12px; cursor: pointer;">전체</button>
+        </div>
+
+        <button id="btn-stage4-tester" class="btn btn-success" style="background: linear-gradient(135deg, #16a34a, #15803d); border: 1px solid #4ade80;">
+          <span>🔔</span> 벨 테스터 (도통 시험)
+        </button>
+        <button id="btn-stage4-toggle-main" class="btn btn-secondary" style="border: 1px solid #475569; background: #1e293b; color: #f8fafc;" title="주회로 결선 숨기기/보기 (보조회로 관찰 집중)">
+          <span id="icon-toggle-main">👁️</span> <span id="label-toggle-main">주회로 숨김</span>
+        </button>
+        <button id="btn-stage4-toggle-dir" class="btn btn-secondary active" style="border: 1px solid #eab308; background: #451a03; color: #fef08a;" title="전선 진행 방향 화살표 및 단자 순번 뱃지 표시">
+          <span>🧭</span> 방향·순번 ON
+        </button>
+        <button id="btn-stage4-clear" class="btn btn-danger">
+          <span>↺</span> 배선 초기화
+        </button>
+        <button id="btn-goto-stage3-back" class="btn btn-secondary">
+          <span>◀</span> 3단계 핀번호로
+        </button>
+        <button id="btn-goto-stage5" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); margin-left: auto;">
+          <span>📐</span> 5단계 배관 & 새들 진행 ▶
+        </button>
+      </div>
+
+      <!-- 5단계 배관 제도 & 새들 인터랙션 툴바 -->
+      <div class="action-toolbar" id="stage5-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage5-play-all" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none;">
+          <span>▶</span> 5단계 전체 자동 시연
+        </button>
+        <button id="btn-stage5-step1" class="btn btn-secondary">
+          <span>1.</span> 🔩 배전반 고정 (4×24 4개)
+        </button>
+        <button id="btn-stage5-step2" class="btn btn-secondary">
+          <span>2.</span> 📐 수평선 & 배관선 긋기 (먹줄)
+        </button>
+        <button id="btn-stage5-step3" class="btn btn-accent" style="background: linear-gradient(135deg, #d97706, #b45309); border: 1px solid #f59e0b;">
+          <span>3.</span> ✍️ 외부단자 & 새들 마킹 (커버 대기법)
+        </button>
+        <button id="btn-stage5-step4" class="btn btn-secondary">
+          <span>4.</span> 📦 외부기구 고정 (단자대4·J박스1·박스4)
+        </button>
+        <button id="btn-stage5-step5" class="btn btn-secondary">
+          <span>5.</span> 🛠️ 전체 새들 1차 고정 (바깥쪽 1개씩)
+        </button>
+        <button id="btn-stage5-step6" class="btn btn-secondary">
+          <span>6.</span> 🔗 커넥터 접속 (PE 6 · CD 7)
+        </button>
+        <button id="btn-stage5-step7" class="btn btn-accent" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid #38bdf8;">
+          <span>7.</span> 🚰 배관 설치 & ③ 케이블 장착
+        </button>
+        <button id="btn-stage5-follow" class="btn btn-secondary" title="시연 중 작업하는 부분으로 화면을 확대해 따라가기">
+          <span>🎥</span> 따라가며 보기 ON
+        </button>
+        <button id="btn-stage5-clear" class="btn btn-danger">
+          <span>↺</span> 제도 초기화
+        </button>
+        <button id="btn-goto-stage4-back" class="btn btn-secondary">
+          <span>◀</span> 4단계 보조회로로
+        </button>
+        <button id="btn-goto-stage6" class="btn btn-primary" style="background: linear-gradient(135deg, #059669, #047857); margin-left: auto;">
+          <span>⚡</span> 6단계 기구장착 & 입선 진행 ▶
+        </button>
+      </div>
+
+      <!-- 6단계: 외부단자 가조립 · 입선 · 결선 · 박스 뚜껑 (5단계 벽면 위에서 이어서 작업) -->
+      <div class="action-toolbar" id="stage6-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage6-play-all" class="btn btn-primary" style="background: linear-gradient(135deg, #059669, #047857); border: none;">
+          <span>▶</span> 6단계 전체 자동 시연
+        </button>
+        <button id="btn-stage6-step1" class="btn btn-secondary">
+          <span>1.</span> 🔧 외부단자 가조립
+        </button>
+        <button id="btn-stage6-step2" class="btn btn-accent" style="background: linear-gradient(135deg, #ca8a04, #a16207); border: 1px solid #facc15;">
+          <span>2.</span> 🧵 전선 입선 (먼 쪽부터)
+        </button>
+        <button id="btn-stage6-step3" class="btn btn-secondary">
+          <span>3.</span> ✂️ 탈피 & 결선 (공통선 먼저)
+        </button>
+        <button id="btn-stage6-step4" class="btn btn-secondary">
+          <span>4.</span> 📦 박스 뚜껑 결합
+        </button>
+        <button id="btn-stage6-follow" class="btn btn-secondary" title="시연 중 작업하는 부분으로 화면을 확대해 따라가기 (5단계와 공통 설정)">
+          <span>🎥</span> 따라가며 보기 ON
+        </button>
+        <button id="btn-stage6-clear" class="btn btn-danger">
+          <span>↺</span> 입선 초기화
+        </button>
+        <button id="btn-goto-stage5-back" class="btn btn-secondary">
+          <span>◀</span> 5단계 배관으로
+        </button>
+        <button id="btn-goto-stage7" class="btn btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); margin-left: auto;">
+          <span>⚡</span> 7단계 동작 테스트 ▶
+        </button>
+      </div>
+
+      <!-- 7단계: 전원 투입 & 동작 테스트 -->
+      <div class="action-toolbar" id="stage7-toolbar" style="display: none; flex-wrap: wrap; gap: 8px;">
+        <button id="btn-stage7-all" class="btn btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); border: none;">
+          <span>📋</span> 동작 사항 전체 테스트
+        </button>
+        <button id="btn-stage7-next" class="btn btn-accent" style="background: linear-gradient(135deg, #16a34a, #15803d); border: 1px solid #4ade80;">
+          <span>▶</span> 다음 단계 테스트
+        </button>
+        <button id="btn-stage7-reset" class="btn btn-danger">
+          <span>↺</span> 동작 초기화
+        </button>
+        <button id="btn-goto-stage6-back" class="btn btn-secondary">
+          <span>◀</span> 6단계 입선으로
+        </button>
+      </div>
+
+      <!-- 실물 기판 SVG 렌더링 뷰포트 (1단계, 2단계, 4단계용) -->
+      <div id="board-stage-container" class="board-stage-container">
+        <!-- SVG가 동적으로 주입됩니다 -->
+      </div>
+
+      <!-- 시퀀스 회로도 뷰포트 (3단계용) -->
+      <div id="sequence-stage-container" class="board-stage-container" style="display: none; padding: 12px; background: #0f172a;">
+        <!-- 시퀀스 회로도 및 그루핑 뷰가 주입됩니다 -->
+      </div>
+
+      <!-- 실기 시험장 벽면 합판 배관 제도 뷰포트 (5단계, 6단계용: 1800×1600mm) -->
+      <div id="piping-stage-container" class="board-stage-container" style="display: none; padding: 10px; background: radial-gradient(circle at center, #1e293b 0%, #0b0f17 100%);">
+        <!-- 벽면 작업판 및 배관 제도 SVG가 동적으로 주입됩니다 -->
+      </div>
+
+      <!-- 0단계: 공개문제 문제지 전체 보기 (페이지 넘김) -->
+      <div id="doc-stage-container" class="board-stage-container" style="display: none; cursor: default; flex-direction: column; gap: 8px; padding: 8px;">
+        <div class="doc-nav doc-nav-main" id="doc-nav-main">
+          <button class="doc-prev">◀ 이전</button>
+          <span class="doc-page-label">1 / 11</span>
+          <button class="doc-next">다음 ▶</button>
+          <span class="doc-hint">← → 키로도 넘길 수 있어요</span>
+        </div>
+        <div class="doc-page-wrap"><img id="doc-page-main" alt="공개문제 페이지"></div>
+      </div>
+
+      <!-- 7단계: 시퀀스 도면 전류 흐름 + 조작반 (동적으로 주입) -->
+      <div id="operation-stage-container" class="board-stage-container" style="display: none; padding: 10px; cursor: default; background: radial-gradient(circle at center, #1e293b 0%, #0b0f17 100%);"></div>
+    </section>
+
+    <!-- 하단: 이번 단계 사용 부품 (가로로 길게, 한눈에) -->
+    <section class="parts-strip">
+      <h3 class="card-title">📦 사용 부품 (11종)</h3>
+      <div class="parts-chips">
+        <div class="parts-chip"><span class="comp-tag">단자대</span><span>TB5, TB6 (10P+10P)</span><b>2개</b></div>
+        <div class="parts-chip"><span class="comp-tag">차단기</span><span>MCCB (30A 3P)</span><b>1개</b></div>
+        <div class="parts-chip"><span class="comp-tag">퓨즈</span><span>FUSE 홀더 (2P 유리관)</span><b>1개</b></div>
+        <div class="parts-chip"><span class="comp-tag">12P 소켓</span><span>EOCR, MC1, MC2</span><b>3개</b></div>
+        <div class="parts-chip"><span class="comp-tag">8P 소켓</span><span>X, FR, T, FLS</span><b>4개</b></div>
+        <div class="parts-chip"><span class="comp-tag">소모품</span><span>마스킹 종이테이프 & 나사</span><b>충분히</b></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 원본 시험 도면 모달 팝업 -->
+  <div id="blueprint-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-size: 16px; font-weight: 800;">공식 도면: 2) 제어판 내부 기구 배치도</h3>
+        <button id="modal-close-btn" class="btn btn-secondary" style="padding: 4px 10px;">✕ 닫기</button>
+      </div>
+      <div class="modal-body">
+        <img id="modal-img" src="assets/images/board_layout.png" alt="공식 도면">
+      </div>
+    </div>
+  </div>
+
+  <!-- 부품 정보 툴팁 -->
+  <div id="comp-tooltip" class="comp-tooltip"></div>
+
+  <!-- 스크립트 모듈 로드 -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

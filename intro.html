@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전기기능사 실기 인터랙티브 교육관 — 프로그램 소개</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --bg2: #0f172a;
+      --card: #1e293b;
+      --line: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --blue: #38bdf8;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --rose: #f43f5e;
+      --yellow: #facc15;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+      line-height: 1.7;
+    }
+    a { color: inherit; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    section { padding: 56px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.6); }
+    h2 { font-size: 26px; margin-bottom: 18px; }
+    h2 .em { color: var(--blue); }
+    .lead { color: var(--muted); font-size: 16px; }
+
+    /* 상단 */
+    .hero { padding: 72px 0 60px; text-align: center; }
+    .hero .badge {
+      display: inline-block; padding: 4px 14px; border-radius: 999px;
+      border: 1px solid var(--blue); color: var(--blue); font-size: 13px; font-weight: 700; margin-bottom: 16px;
+    }
+    .hero h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.3; margin-bottom: 14px; }
+    .hero h1 .bolt { color: var(--yellow); }
+    .hero p { color: var(--muted); font-size: 17px; max-width: 720px; margin: 0 auto 28px; }
+    .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px;
+      font-weight: 800; font-size: 16px; text-decoration: none; border: 1px solid var(--line); color: #fff;
+    }
+    .btn.primary { background: linear-gradient(135deg, #0284c7, #2563eb); border: none; }
+    .btn.ghost { background: rgba(30, 41, 59, 0.7); }
+    .btn:hover { filter: brightness(1.12); }
+
+    /* 회로 미리보기 그림 */
+    .hero-art { margin: 40px auto 0; max-width: 760px; }
+    .hero-art svg { width: 100%; height: auto; }
+    .flow { stroke-dasharray: 10 8; animation: flow 1.2s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -36; } }
+    .lamp-glow { animation: glow 1.4s ease-in-out infinite; }
+    @keyframes glow { 50% { opacity: 0.35; } }
+
+    /* 소개 글 */
+    .about { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: start; }
+    .about .text p { margin-bottom: 14px; font-size: 16.5px; }
+    .about .text b { color: var(--yellow); }
+    .purpose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
+    .purpose div { display: flex; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .purpose span {
+      flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--yellow); color: #0f172a;
+      display: flex; align-items: center; justify-content: center; font-weight: 900;
+    }
+    .purpose p { margin: 0 !important; font-size: 14px !important; color: #cbd5e1; line-height: 1.55; }
+    .purpose p b { color: var(--text) !important; }
+    @media (max-width: 560px) { .purpose { grid-template-columns: 1fr; } }
+    .warn {
+      background: rgba(244, 63, 94, 0.08); border: 2px solid rgba(244, 63, 94, 0.6); border-radius: 16px; padding: 24px 26px;
+    }
+    .warn h2 { color: #fb7185; font-size: 22px; margin-bottom: 12px; }
+    .warn ul { padding-left: 20px; margin-bottom: 18px; }
+    .warn li { margin: 6px 0; font-size: 16px; color: #fecdd3; }
+    .warn li b { color: #fff; }
+    .note {
+      background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.5);
+      border-radius: 14px; padding: 18px 20px;
+    }
+    .note h3 { color: var(--amber); font-size: 17px; margin-bottom: 8px; }
+    .note p { color: #fde68a; font-size: 15px; }
+
+    /* 7단계 흐름 */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .step {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; position: relative;
+    }
+    .step .no {
+      display: inline-flex; width: 30px; height: 30px; border-radius: 50%; align-items: center; justify-content: center;
+      background: var(--blue); color: #0f172a; font-weight: 900; margin-right: 6px;
+    }
+    .step .ico { font-size: 26px; float: right; }
+    .step h3 { font-size: 16px; margin: 10px 0 6px; }
+    .step p { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+    .step.key { border-color: var(--yellow); box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.35); }
+    .step.key .no { background: var(--yellow); }
+    .step .tag { display: inline-block; font-size: 11px; font-weight: 800; color: #0f172a; background: var(--yellow); border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
+
+    /* 실수 줄이기 */
+    .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+    .card h3 { font-size: 17px; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+    .card ul { padding-left: 18px; color: #cbd5e1; font-size: 14.5px; }
+    .card li { margin: 4px 0; }
+    .card .ok { color: var(--green); font-weight: 800; }
+    .card .ng { color: var(--rose); font-weight: 800; }
+
+    /* 수업용 기능 */
+    .keys { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .key {
+      background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 14px;
+    }
+    .key kbd {
+      display: inline-block; min-width: 26px; text-align: center; padding: 1px 7px; border-radius: 6px;
+      background: #334155; border-bottom: 2px solid #0f172a; font-weight: 800; margin-right: 6px;
+    }
+
+    /* 저작권·바닥글 */
+    .legal { color: var(--muted); font-size: 14px; }
+    .legal b { color: #e2e8f0; }
+    footer { padding: 36px 0 48px; text-align: center; color: var(--muted); font-size: 14px; }
+    footer .brand { color: var(--text); font-weight: 900; font-size: 18px; margin-bottom: 4px; }
+
+    @media (max-width: 860px) {
+      .about { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 상단 -->
+  <header class="hero">
+    <div class="wrap">
+      <span class="badge">전기기능사 실기 · 공개문제 18과제</span>
+      <h1><span class="bolt">⚡</span> 전기기능사 실기<br>인터랙티브 교육관</h1>
+      <p>시퀀스 도면의 <b>핀번호·그루핑</b>부터 <b>보조회로 결선</b>, <b>배관·입선</b>, <b>동작 테스트</b>까지 —<br>
+        실기 작업 순서를 단계별로 눈으로 보며 복습하는 프로그램입니다.</p>
+      <div class="btns">
+        <a class="btn primary" href="index.html">▶ 프로그램 시작하기</a>
+        <a class="btn ghost" href="#steps">🧭 7단계 흐름 보기</a>
+      </div>
+
+      <!-- 회로 미리보기: 전원 ➜ 버튼 ➜ 코일·램프로 전기가 흐르는 모습 -->
+      <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 760 210">
+          <rect x="1" y="1" width="758" height="208" rx="16" fill="#0f172a" stroke="#334155" />
+          <!-- 전원선 -->
+          <path d="M 60 50 L 700 50" stroke="#475569" stroke-width="6" />
+          <path d="M 60 50 L 700 50" class="flow" stroke="#f97316" stroke-width="6" />
+          <path d="M 60 170 L 700 170" stroke="#38bdf8" stroke-width="6" opacity="0.8" />
+          <text x="30" y="56" fill="#f8fafc" font-size="14" font-weight="800">L1</text>
+          <text x="30" y="176" fill="#f8fafc" font-size="14" font-weight="800">N</text>
+          <!-- 줄 1: 버튼 ➜ 릴레이 -->
+          <path d="M 180 50 L 180 80" stroke="#f97316" stroke-width="5" />
+          <rect x="166" y="80" width="28" height="22" rx="4" fill="#16a34a" />
+          <text x="200" y="97" fill="#86efac" font-size="13" font-weight="800">PB1</text>
+          <path d="M 180 102 L 180 128" stroke="#f97316" stroke-width="5" class="flow" />
+          <circle cx="180" cy="145" r="17" fill="#1e293b" stroke="#facc15" stroke-width="3" />
+          <text x="180" y="150" fill="#facc15" font-size="13" font-weight="900" text-anchor="middle">X1</text>
+          <path d="M 180 162 L 180 170" stroke="#38bdf8" stroke-width="5" />
+          <!-- 줄 2: 리밋스위치 ➜ 타이머 -->
+          <path d="M 360 50 L 360 80" stroke="#f97316" stroke-width="5" />
+          <path d="M 352 82 L 352 102 M 368 82 L 368 102" stroke="#e2e8f0" stroke-width="3" />
+          <text x="378" y="97" fill="#bae6fd" font-size="13" font-weight="800">LS1</text>
+          <path d="M 360 102 L 360 128" stroke="#f97316" stroke-width="5" class="flow" />
+          <circle cx="360" cy="145" r="17" fill="#1e293b" stroke="#f59e0b" stroke-width="3" />
+          <text x="360" y="150" fill="#fbbf24" font-size="13" font-weight="900" text-anchor="middle">T1</text>
+          <path d="M 360 162 L 360 170" stroke="#38bdf8" stroke-width="5" />
+          <!-- 줄 3: 접촉기 ➜ 전동기 -->
+          <path d="M 540 50 L 540 128" stroke="#f97316" stroke-width="5" class="flow" />
+          <circle cx="540" cy="145" r="17" fill="#1e293b" stroke="#22c55e" stroke-width="3" />
+          <text x="540" y="150" fill="#86efac" font-size="12" font-weight="900" text-anchor="middle">MC1</text>
+          <path d="M 540 162 L 540 170" stroke="#38bdf8" stroke-width="5" />
+          <!-- 램프 -->
+          <path d="M 660 50 L 660 128" stroke="#f97316" stroke-width="5" />
+          <circle cx="660" cy="145" r="28" fill="#ef4444" opacity="0.35" class="lamp-glow" />
+          <circle cx="660" cy="145" r="17" fill="#ef4444" stroke="#fecaca" stroke-width="3" />
+          <text x="660" y="150" fill="#fff" font-size="12" font-weight="900" text-anchor="middle">RL</text>
+          <path d="M 660 162 L 660 170" stroke="#38bdf8" stroke-width="5" />
+          <!-- 그룹 번호 -->
+          <g font-size="12" font-weight="900">
+            <circle cx="120" cy="50" r="12" fill="#ef4444" /><text x="120" y="54" fill="#fff" text-anchor="middle">①</text>
+            <circle cx="215" cy="115" r="12" fill="#ec4899" /><text x="215" y="119" fill="#fff" text-anchor="middle">⑤</text>
+            <circle cx="395" cy="115" r="12" fill="#3b82f6" /><text x="395" y="119" fill="#fff" text-anchor="middle">⑥</text>
+            <circle cx="120" cy="170" r="12" fill="#64748b" /><text x="120" y="174" fill="#fff" text-anchor="middle">⑯</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. 이 프로그램은요 -->
+  <section>
+    <div class="wrap about">
+      <div class="text">
+        <h2>📘 이 프로그램을 만든 이유</h2>
+        <p>전기기능사 실기는 강의를 들을 때는 다 알 것 같은데, 막상 혼자 다시 해 보면
+          <b>"이 접점이 몇 번이었지?"</b>, <b>"이 선은 어디서 어디로 가지?"</b> 하고 헷갈리는 순간이 많습니다.</p>
+        <p>이 프로그램은 <b>오프라인 실기 강의를 들은 뒤 복습용</b>으로, 작업 실수를 줄이기 위해
+          <b>단계별 작업 순서</b>와 <b>시퀀스 회로의 원리</b>를 한눈에 볼 수 있도록 정리한 것입니다.</p>
+        <div class="purpose">
+          <div><span>1</span><p><b>넘버링 · 그루핑</b><br>시퀀스 회로 속 각 기기의 핀번호를 적고 같은 전위를 묶는 작업 — 실수가 가장 많은 부분을 정리했습니다.</p></div>
+          <div><span>2</span><p><b>보조회로 결선</b><br>그루핑을 바탕으로, 어떤 순서·어떤 통로로 결선하면 실수가 줄어드는지 참고할 수 있습니다.</p></div>
+          <div><span>3</span><p><b>배관 작업 순서</b><br>오프라인 강의에서 배운 순서 그대로, 도면별 기구 위치와 작업 순서를 기록했습니다.</p></div>
+          <div><span>4</span><p><b>동작 원리 확인</b><br>최종적으로 이 회로가 <b>어떻게 동작하는지 눈으로 직접 확인</b>하며 원리를 이해할 수 있습니다.</p></div>
+        </div>
+        <p>공개문제 <b>18과제</b> 모두, 문제지 도면을 그대로 보며 <b>배치 ➜ 주회로 ➜ 핀번호·그루핑 ➜ 보조회로 ➜ 배관 ➜ 입선·결선 ➜ 동작 테스트</b>까지
+          차례로 따라가 볼 수 있습니다.</p>
+      </div>
+      <div class="note">
+        <h3>🙏 미리 말씀드려요</h3>
+        <p>넘버링 방법이나 결선·배관 순서는 강사님마다, 유튜브 강의마다 조금씩 다릅니다.
+          이 프로그램은 <b>제가 배운 방법대로 구현한 것</b>이니, 하나의 참고 방법으로 이해해 주시면 감사하겠습니다.</p>
+        <p style="margin-top: 10px;">시험장에서는 항상 <b>문제지 도면과 감독위원의 지시</b>를 기준으로 작업하세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2-1. 주의사항 -->
+  <section style="padding: 36px 0;">
+    <div class="wrap">
+      <div class="warn">
+        <h2>⚠️ 주의사항</h2>
+        <ul>
+          <li>이 프로그램은 <b>작업 순서를 나열해 놓은 것에 불과</b>하며, <b>오프라인 강의를 대체하지 못합니다.</b></li>
+          <li>오프라인 강의에는 강사님마다의 <b>많은 노하우</b>, <b>실수를 줄이기 위한 팁</b>, <b>각 작업 단계별 세세한 주의사항</b>이 있습니다. 꼭 강의와 함께 활용하세요.</li>
+          <li>이 자료는 <b>참고자료로만</b> 활용하시고, <b>공개문제 원본</b>은 공식 사이트에서 직접 내려받으시기 바랍니다.</li>
+        </ul>
+        <a class="btn ghost" href="https://www.q-net.or.kr/cst006.do?id=cst00602&amp;brdId=Q006&amp;code=1204&amp;artlSeq=5208377" target="_blank" rel="noopener">📥 공개문제 원본 내려받기 — 큐넷(Q-Net) 전기기능사 공개문제</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 7단계 흐름 -->
+  <section id="steps">
+    <div class="wrap">
+      <h2>🧭 실기 작업 <span class="em">7단계</span>를 순서대로</h2>
+      <p class="lead" style="margin-bottom: 22px;">각 단계 버튼을 누르면 실제 작업 순서대로 애니메이션이 진행됩니다. 가장 중요한 단계는 <span style="color: var(--yellow); font-weight: 800;">노란 테두리</span>로 표시했어요.</p>
+      <div class="steps">
+        <div class="step"><span class="no">0</span><span class="ico">📄</span>
+          <h3>공개문제 보기</h3><p>문제지 전체 페이지를 넘겨 보며 과제 확인</p></div>
+        <div class="step"><span class="no">1</span><span class="ico">📐</span>
+          <h3>기구 배치</h3><p>400×420 제어판에 단자대·차단기·퓨즈·소켓을 배치도 치수대로</p></div>
+        <div class="step"><span class="no">2</span><span class="ico">🟫</span>
+          <h3>주회로 결선</h3><p>갈·흑·회·녹황 전선색 그대로, 보호도체(PE)부터</p></div>
+        <div class="step key"><span class="no">3</span><span class="ico">🔢</span>
+          <h3>핀번호 · 그루핑<span class="tag">핵심</span></h3><p>시퀀스 도면 모든 접점에 핀번호를 적고, 같은 전위를 ①②③… 그룹으로 묶기</p></div>
+        <div class="step key"><span class="no">4</span><span class="ico">🟨</span>
+          <h3>보조회로 결선<span class="tag">핵심</span></h3><p>그룹 순서대로 황색선을 통로 규칙에 맞춰 결선, 벨 테스터로 확인</p></div>
+        <div class="step"><span class="no">5</span><span class="ico">🚰</span>
+          <h3>배관 · 새들</h3><p>먹줄 ➜ 새들 마킹(커버 대기법) ➜ 커넥터 ➜ 밀착 재단 ➜ 배관 설치</p></div>
+        <div class="step"><span class="no">6</span><span class="ico">🧵</span>
+          <h3>입선 · 결선</h3><p>먼 쪽부터 입선, J박스 정션, 공통선 먼저 결선, 박스 뚜껑</p></div>
+        <div class="step"><span class="no">7</span><span class="ico">💡</span>
+          <h3>동작 테스트</h3><p>MCCB ON ➜ 버튼·리밋스위치 조작, 램프·전동기 동작을 문제지 동작 사항과 비교</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 이런 실수를 줄여 줘요 -->
+  <section>
+    <div class="wrap">
+      <h2>✅ 이런 실수를 줄여 줘요</h2>
+      <div class="grid2">
+        <div class="card">
+          <h3>🔢 핀번호 · 그루핑</h3>
+          <ul>
+            <li>a접점·b접점을 <b>기구 내부결선도</b>와 대조해 핀번호 표시</li>
+            <li>같은 전위끼리 <b>같은 색 그룹</b>으로 묶어 한눈에 확인</li>
+            <li>도면에 두 번 나오는 같은 단자(예: EOCR 10번)·<b>박스 안 공통선</b> 표시</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🟨 보조회로 결선 규칙</h3>
+          <ul>
+            <li><span class="ok">O</span> 가로는 위·가운데·아래 3개 통로, 세로는 양쪽 끝 통로만</li>
+            <li><span class="ng">X</span> 기구와 기구 사이 틈새로 수직 배선 (실격)</li>
+            <li><span class="ok">O</span> 위 ➜ 아래, 한 방향 지그재그 / <span class="ng">X</span> 한 단자 3가닥</li>
+            <li>결선 방향 화살표 · 순번 뱃지 · 벨 테스터로 확인</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🚰 배관 · 입선 순서</h3>
+          <ul>
+            <li>새들 위치(커버 대기법), TB 단자대 쪽 커넥터 ✕</li>
+            <li>파이프 커터 <b>밀착 재단</b>으로 길이 맞추기</li>
+            <li>J박스 정션 입선, 공통선 먼저 ➜ 단독선 결선</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>💡 동작 테스트</h3>
+          <ul>
+            <li>문제지 <b>'제어회로의 동작 사항'</b>을 단계별로 실행·판정</li>
+            <li>전류가 흐르는 길, 릴레이 딸깍 소리, 램프 점등, 전동기 회전</li>
+            <li>리밋스위치·버튼을 도면이나 벽면에서 직접 눌러 보기</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 수업에서 쓰기 -->
+  <section>
+    <div class="wrap">
+      <h2>🎓 수업·복습에 쓰기 좋게</h2>
+      <p class="lead">설명하면서 보여 줄 수 있도록 만들었습니다.</p>
+      <div class="keys">
+        <div class="key">⏸ <b>한 단계씩</b> — 배관·입선 시연을 장면마다 멈추기</div>
+        <div class="key"><kbd>Space</kbd><kbd>→</kbd> 다음 장면 · <kbd>←</kbd> 이전 장면</div>
+        <div class="key">🔢 <b>장면 번호로 이동</b></div>
+        <div class="key"><kbd>F</kbd> 크게 보기 · <kbd>Esc</kbd> 끝</div>
+        <div class="key">🎥 따라가며 보기 (작업 부분 확대)</div>
+        <div class="key">⏩ 1.0x · 1.5x · 2.0x 속도</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 저작권 · 이용 안내 -->
+  <section>
+    <div class="wrap legal">
+      <h2 style="font-size: 20px;">📌 이용 안내</h2>
+      <p>· 이 프로그램은 <b>학습 참고용</b>이며 오프라인 강의를 대체하지 않습니다. 실제 시험은 문제지와 감독위원의 지시를 따르세요.</p>
+      <p>· 국가기술자격 공개문제의 저작권은 <b>한국산업인력공단</b>에 있습니다.</p>
+      <p>· 인터넷 브라우저(크롬·엣지 권장)에서 바로 실행됩니다.</p>
+    </div>
+  </section>
+
+  <!-- 7. 응원 메시지 -->
+  <section>
+    <div class="wrap" style="text-align: center;">
+      <div style="font-size: 40px; margin-bottom: 6px;">💌</div>
+      <h2 style="margin-bottom: 10px;">혼자만 쓰기 아까워서 공개합니다</h2>
+      <p class="lead" style="max-width: 660px; margin: 0 auto;">
+        제가 공부하며 정리한 내용을 같은 시험을 준비하는 분들과 나누고 싶었습니다.<br>
+        편하게 참고하시고, 도움이 되셨다면 <b style="color: var(--yellow);">응원의 메시지</b> 한마디 부탁드립니다. 큰 힘이 됩니다.<br>
+        모든 수험생 여러분의 <b style="color: var(--text);">합격</b>을 응원합니다! ⚡
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="brand">Calamus</div>
+      <div><a href="https://calamus.ai.kr" target="_blank" rel="noopener">calamus.ai.kr</a></div>
+      <div style="margin-top: 14px;"><a class="btn primary" href="index.html">▶ 프로그램 시작하기</a></div>
+    </div>
+  </footer>
+</body>
+</html>
