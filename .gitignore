@@ -14,3 +14,6 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 배포 빌드 결과
+dist/
