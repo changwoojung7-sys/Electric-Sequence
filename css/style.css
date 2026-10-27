@@ -2050,3 +2050,48 @@ body.focus-mode .parts-strip {
   border-color: #ef4444;
   animation: pulse-border 1.5s ease-in-out 2;
 }
+
+/* 상단 '프로그램 소개' 버튼 — 눈에 잘 띄게 (주황 그라데이션 + 은은한 반짝임) */
+.intro-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #1c1917;
+  text-decoration: none;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  border: 2px solid #fef08a;
+  box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6), 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: introGlow 2.4s ease-in-out infinite;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.intro-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+  filter: brightness(1.08);
+  animation-play-state: paused;
+}
+@keyframes introGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0), 0 2px 8px rgba(0, 0, 0, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-btn { animation: none; }
+}
+
+/* 좁은 화면: 헤더가 두 줄로 넘어가지 않게 (작은 태그 숨기고 과제 선택 칸을 줄임) */
+@media (max-width: 1500px) {
+  .brand-section { flex-wrap: nowrap; min-width: 0; }
+  .brand-section .brand-tag { display: none; }
+  .brand-section .problem-selector-wrapper { min-width: 0; flex-shrink: 1; }
+  .brand-section .problem-select { max-width: 460px; min-width: 0; text-overflow: ellipsis; }
+}
+@media (max-width: 1100px) {
+  .brand-logo { font-size: 16px; white-space: nowrap; }
+  .intro-btn { padding: 6px 12px; font-size: 0.85rem; }
+  .brand-section .select-label { display: none; }
+}

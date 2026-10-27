@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.1.0] - 2026-10-27
 
+### Changed (사용자 요청: 소개 버튼 눈에 띄게)
+- 상단 **ℹ️ 소개** ➜ **📖 프로그램 소개** 버튼으로 변경: 더 크게, 노랑·주황 그라데이션 + 은은한 반짝임(마우스를 올리면 살짝 커짐). 좁은 화면(1500px 이하)에서는 작은 태그를 숨기고 과제 선택 칸을 줄여 헤더가 두 줄로 넘어가지 않게.
+
 ### Added (배포)
 - GitHub 저장소 `changwoojung7-sys/Electric-Sequence` (main) 첫 업로드 — Cloudflare Pages 배포용. `.gitignore`로 작업 임시 파일(`scratch*`)·`참고자료/`·원본 PDF 폴더 제외.
 
