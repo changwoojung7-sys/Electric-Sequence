@@ -802,6 +802,164 @@ export class Stage5PipingDraft {
   }
 
   /**
+   * 배관 길 잡기 (기준 수평선 다음, 배관 중심선 전)
+   * ① 배전반 윗변·아랫변에 배관 출구 위치 마킹 (배전반 가장자리 기준 치수 사슬: 예 100·100·100·100 / 50·100·100·100·50)
+   * ② 마킹한 곳에서 위·아래로 도면 치수만큼 세로선 (예 400 · 500)
+   * ③ 세로선 끝 높이에서 가로로 수평선 ➜ 이 선을 따라 배관이 지나감
+   */
+  async draftPipeGuides(lineLayer, labelLayer, isAnimated, token) {
+    const W = this.WALL;
+    const exits = { top: [], bot: [] };
+    this.pipes.forEach(pipe => {
+      const [a, b] = pipe.points;
+      const side = a[1] === W.BOX_TOP ? 'top' : (a[1] === W.BOX_BOT ? 'bot' : null);
+      if (!side || a[0] < W.BOX_LEFT || a[0] > W.BOX_RIGHT || b[0] !== a[0]) return;
+      exits[side].push({ x: a[0], y0: a[1], y1: b[1], corner: pipe.points.length > 2 && pipe.kind !== 'CABLE' });
+    });
+    const guide = this.appendSvg(lineLayer, `<g id="s5-pipe-guides" fill="none" stroke-linecap="round"></g>`)[0];
+    const marks = this.appendSvg(labelLayer, `<g id="s5-exit-marks" font-family="sans-serif" font-weight="900" text-anchor="middle"></g>`)[0];
+    const temp = this.appendSvg(labelLayer, `<g id="s5-guide-lengths" font-family="sans-serif" font-weight="900"></g>`)[0];
+    const say = (html) => { if (isAnimated) this.updateGuideMessage(`📐 <b>[2단계: 배관 길 잡기]</b><br>${html}`); };
+    const wait = async (ms) => { if (isAnimated) await this.sleep(ms); return this.alive(token); };
+
+    for (const side of ['top', 'bot']) {
+      const list = [...new Map(exits[side].map(e => [e.x, e])).values()].sort((p, q) => p.x - q.x);
+      if (!list.length) continue;
+      const ey = side === 'top' ? W.BOX_TOP : W.BOX_BOT;
+      const dir = side === 'top' ? -1 : 1;
+      const edgeName = side === 'top' ? '윗변' : '아랫변';
+      const xs = [W.BOX_LEFT, ...list.map(e => e.x), W.BOX_RIGHT];
+      const chain = xs.slice(1).map((x, i) => x - xs[i]);
+      if (isAnimated) {
+        await this.focusBox(W.BOX_LEFT - 120, ey - 140, W.BOX_RIGHT + 120, ey + 140, 20, 460);
+        if (!this.alive(token)) return;
+      }
+
+      // ① 출구 마킹 + 치수 사슬 (배전반 가장자리 기준)
+      say(`① 배전반 <b>${edgeName}</b>에 배관이 나갈 자리를 표시합니다. 배전반 가장자리부터 <b>${chain.join(' · ')}</b> mm`);
+      const ty = ey + dir * 22;   // 치수 글씨: 배전반 바깥쪽
+      for (let i = 0; i < xs.length - 1; i++) {
+        const [x1, x2] = [xs[i], xs[i + 1]];
+        const [seg] = this.appendSvg(marks, `
+          <g>
+            <line x1="${x1}" y1="${ey + dir * 10}" x2="${x2}" y2="${ey + dir * 10}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${x1}" y1="${ey + dir * 4}" x2="${x1}" y2="${ey + dir * 16}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${x2}" y1="${ey + dir * 4}" x2="${x2}" y2="${ey + dir * 16}" stroke="#111827" stroke-width="1.5" />
+            <text x="${(x1 + x2) / 2}" y="${ty + (side === 'top' ? 0 : 8)}" font-size="13" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${x2 - x1}</text>
+          </g>`);
+        if (isAnimated) { this.fadeIn(seg, 160); if (!await wait(180)) return; }
+      }
+      for (const e of list) {
+        const [m] = this.appendSvg(marks, `
+          <g filter="url(#s5-chalk)" stroke="#f8fafc" stroke-width="4" stroke-linecap="round">
+            <line x1="${e.x - 9}" y1="${ey}" x2="${e.x + 9}" y2="${ey}" />
+            <line x1="${e.x}" y1="${ey - 9}" x2="${e.x}" y2="${ey + 9}" />
+          </g>`);
+        if (isAnimated) { this.popIn(m, 180); if (!await wait(220)) return; }
+      }
+      if (!await wait(500)) return;
+
+      // ② 마킹한 곳에서 위·아래로 세로선
+      const span = list.reduce((s, e) => [Math.min(s[0], e.y1), Math.max(s[1], e.y1)], [ey, ey]);
+      if (isAnimated) {
+        await this.focusBox(W.BOX_LEFT - 200, span[0] - 60, W.BOX_RIGHT + 200, span[1] + 60, 20, 460);
+        if (!this.alive(token)) return;
+      }
+      const lens = [...new Set(list.map(e => Math.abs(e.y1 - ey)))].join(' · ');
+      say(`② 표시한 자리에서 ${side === 'top' ? '위쪽' : '아래쪽'}으로 도면 치수만큼 <b>세로선</b>을 긋습니다. (<b>${lens}</b> mm)`);
+      for (const e of list) {
+        const len = Math.abs(e.y1 - e.y0);
+        const [v] = this.appendSvg(guide, `<line x1="${e.x}" y1="${e.y0}" x2="${e.x}" y2="${e.y1}" stroke="#fef9c3" stroke-width="2.5" stroke-dasharray="12,6" opacity="0.95" />`);
+        const [t] = this.appendSvg(temp, `<text x="${e.x + 8}" y="${(e.y0 + e.y1) / 2 + 5}" font-size="14" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${len}</text>`);
+        if (isAnimated) {
+          v.style.strokeDasharray = 'none';
+          await this.drawStroke(v, 120);
+          v.style.strokeDasharray = '';
+          this.fadeIn(t, 160);
+          if (!await wait(150)) return;
+        }
+      }
+
+      // ③ 세로선 끝 높이에서 수평선 (배관이 꺾여 지나가는 높이)
+      const ys = [...new Set(list.filter(e => e.corner).map(e => e.y1))];
+      if (ys.length) {
+        say(`③ 세로선 끝에서 <b>수평선</b>을 긋습니다. 이 선을 따라 배관이 옆으로 지나갑니다. (배전반 ${edgeName}에서 <b>${ys.map(y => Math.abs(y - ey)).join(' · ')}</b> mm)`);
+        for (const y of ys) {
+          const [h] = this.appendSvg(guide, `<line x1="80" y1="${y}" x2="1720" y2="${y}" stroke="#fef9c3" stroke-width="2.5" stroke-dasharray="12,6" opacity="0.85" />`);
+          if (isAnimated) {
+            await this.focusBox(80, y - 120, 1720, y + 120, 20, 460);
+            if (!this.alive(token)) return;
+            await this.drawLineX(h, 800);
+            if (!await wait(250)) return;
+          }
+          // ④ 수평선 위에 꺾이는 곳·J박스 자리 마킹: 바깥쪽 첫 세로선에서 J박스 쪽(예 350 · 300)과 반대쪽(예 400)
+          await this.markGuideLine(y, list.filter(e => e.y1 === y).map(e => e.x), side, marks, temp, say, isAnimated, token);
+          if (!this.alive(token)) return;
+        }
+      }
+    }
+    // 세로선 길이 숫자는 길 잡기 동안만 (완성 후에는 도면 치수선으로 확인)
+    if (isAnimated) {
+      say('✅ 배관이 지나갈 길(세로선·수평선)을 모두 잡았습니다. 이제 이 선을 따라 <b>배관 중심선</b>을 하나씩 긋습니다.');
+      if (!await wait(900)) return;
+    }
+    temp.remove();
+  }
+
+  /**
+   * 수평선 위 마킹: 배관이 꺾이는 곳·J박스 자리를 바깥쪽 첫 세로선부터 잰 치수로 표시
+   * (1번 위: 800 세로선에서 J박스 쪽 350 · 300, 1000 세로선에서 반대쪽 400)
+   */
+  async markGuideLine(y, vxs, side, marks, temp, say, isAnimated, token) {
+    if (!vxs.length) return;
+    const J = this.junction;
+    const xs = new Set();
+    this.pipes.forEach(p => p.points.forEach(q => { if (q[1] === y) xs.add(q[0]); }));
+    const [vmin, vmax] = [Math.min(...vxs), Math.max(...vxs)];
+    const left = [...xs].filter(x => x < vmin).sort((a, b) => b - a);
+    const right = [...xs].filter(x => x > vmax).sort((a, b) => a - b);
+    const groups = [{ from: vmin, pts: left }, { from: vmax, pts: right }].filter(g => g.pts.length);
+    if (!groups.length) return;
+    const jSide = J[1] === y ? (J[0] < vmin ? 0 : 1) : -1;
+    const desc = groups.map(g => {
+      const chain = g.pts.map((x, i) => Math.abs(x - (i ? g.pts[i - 1] : g.from)));
+      const isJ = jSide >= 0 && g === (jSide === 0 ? groups.find(q => q.from === vmin) : groups.find(q => q.from === vmax));
+      return `${isJ ? 'J박스 쪽' : (jSide >= 0 ? '반대쪽' : (g.from === vmin ? '왼쪽' : '오른쪽'))} <b>${chain.join(' · ')}</b>`;
+    }).join(', ');
+    if (isAnimated) {
+      await this.focusBox(Math.min(...xs, vmin) - 60, y - 110, Math.max(...xs, vmax) + 60, y + 110, 20, 460);
+      if (!this.alive(token)) return;
+    }
+    say(`④ 수평선 위에 배관이 꺾이는 곳·J박스 자리를 마킹합니다. 첫 세로선에서 ${desc} mm`);
+    const dir = side === 'top' ? -1 : 1;   // 치수는 배전반 반대쪽(바깥)에
+    for (const g of groups) {
+      let prev = g.from;
+      for (const x of g.pts) {
+        const [dim] = this.appendSvg(temp, `
+          <g text-anchor="middle">
+            <line x1="${prev}" y1="${y + dir * 14}" x2="${x}" y2="${y + dir * 14}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${prev}" y1="${y + dir * 6}" x2="${prev}" y2="${y + dir * 22}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${x}" y1="${y + dir * 6}" x2="${x}" y2="${y + dir * 22}" stroke="#111827" stroke-width="1.5" />
+            <text x="${(prev + x) / 2}" y="${y + dir * 22 + (dir > 0 ? 12 : 0)}" font-size="14" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${Math.abs(x - prev)}</text>
+          </g>`);
+        const [m] = this.appendSvg(marks, `
+          <g filter="url(#s5-chalk)" stroke="#f8fafc" stroke-width="4" stroke-linecap="round">
+            <line x1="${x - 9}" y1="${y}" x2="${x + 9}" y2="${y}" />
+            <line x1="${x}" y1="${y - 9}" x2="${x}" y2="${y + 9}" />
+          </g>`);
+        if (isAnimated) {
+          this.fadeIn(dim, 160);
+          this.popIn(m, 180);
+          await this.sleep(300);
+          if (!this.alive(token)) return;
+        }
+        prev = x;
+      }
+    }
+    if (isAnimated) await this.sleep(500);
+  }
+
+  /**
    * [2단계] 수평선 및 배관선(치수선) 먹줄 제도 — 순서대로 한 줄씩
    * - 1) 제어함 상단과 하단 수평선 2줄 (외부단자박스 상단/하단 높이와 100% 일치!)
    * - 2) 배관 9개 중심 먹줄 ➜ 관체 ➜ 명칭 태그 (TB 단자대 배관은 끝단 50mm 마감 여유 표식까지)
@@ -846,6 +1004,10 @@ export class Stage5PipingDraft {
       `)[0];
       if (isAnimated) this.fadeIn(label);
     }
+
+    // 1-2) 배관 길 잡기: 배전반 윗변·아랫변 출구 마킹 ➜ 세로선(배전반에서 위·아래로 도면 치수만큼) ➜ 그 끝에서 수평선
+    await this.draftPipeGuides(lineLayer, labelLayer, isAnimated, token);
+    if (!this.alive(token)) return;
 
     // 2) 배관 9개: 중심 먹줄 ➜ 관체 ➜ 태그 ➜ (TB 배관) 50mm 마감 여유
     const bodyGroup = this.appendSvg(lineLayer, `<g id="s5-pipe-outer-conduits" opacity="0.55" stroke-linecap="round" stroke-linejoin="round"></g>`)[0];
