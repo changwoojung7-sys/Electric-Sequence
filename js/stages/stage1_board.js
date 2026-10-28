@@ -459,6 +459,8 @@ export class Stage1Board {
       await this.mountComponents(false);
     }
 
+    if (animated) this.onShowPiping?.();   // 왼쪽 도면 ➜ 문제지 5쪽 배관도
+
     const markLayer = document.getElementById('terminal-markings-layer');
     markLayer.innerHTML = '';
 

@@ -4,7 +4,8 @@
  *   · edge 'x' = 세로 단자대 (단자가 X=at 선 위에 위→아래로 from, from+step, …)
  *   · edge 'y' = 가로 단자대 (단자가 Y=at 선 위에 왼→오른쪽으로)
  * - 배관이 들어오는 쪽 가장자리에 단자(결선 자리)가 있고, 인출선은 반대쪽 가장자리로 나감
- * - 세로 단자대는 배관 높이 바로 아래(from = 배관 y + 10)부터 단자가 시작 ➜ 전선이 위에서 아래로 인입
+ * - 세로 단자대는 배관 중심선이 단자대 정중앙에 오게 (단자 4개의 가운데 = 배관 높이, 사용자 확정)
+ *   ➜ 데이터의 from 대신 배관 끝 높이에서 계산 (pipeEnd가 없을 때만 from 사용)
  */
 
 const LONG = 110;    // 단자대 길이 (mm)
@@ -28,13 +29,14 @@ export function tbBlockGeometry(device, pipeEnd) {
     const fromRight = pipeEnd[0] > device.at;          // 배관이 오른쪽에서 옴 ➜ 단자대는 X=at 왼쪽
     const x0 = fromRight ? device.at - THICK_V : device.at;
     const outerX = fromRight ? x0 : x0 + THICK_V;
+    const from = pipeEnd[1] !== device.from ? pipeEnd[1] - device.step * 1.5 : device.from;   // 배관 중심 = 단자대 가운데
     return {
-      // 세로 단자대: 배관이 맨 위 단자 바로 위 높이로 들어와 위 ➜ 아래로 차례로 결선 (길이는 단자 간격에 맞춤)
-      vertical: true, x0, y0: device.from - MARGIN, w: THICK_V, h: device.step * 3 + MARGIN * 2,
+      // 세로 단자대: 배관이 단자대 정중앙 높이로 들어와 위·아래 단자로 나뉘어 결선 (길이는 단자 간격에 맞춤)
+      vertical: true, x0, y0: from - MARGIN, w: THICK_V, h: device.step * 3 + MARGIN * 2,
       outward: [fromRight ? -1 : 1, 0],                  // 인출선이 나가는 방향
       along: [0, 1],                                     // 단자 번호가 늘어나는 방향
-      slot: (k) => [device.at, device.from + k * device.step],
-      outerSlot: (k) => [outerX, device.from + k * device.step]
+      slot: (k) => [device.at, from + k * device.step],
+      outerSlot: (k) => [outerX, from + k * device.step]
     };
   }
   const fromAbove = pipeEnd[1] < device.at;              // 배관이 위에서 옴 ➜ 단자대는 Y=at 아래

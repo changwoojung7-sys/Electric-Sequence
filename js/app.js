@@ -64,6 +64,8 @@ class AppController {
 
     // 1단계 엔진 초기화
     this.stage1Engine = new Stage1Board(container, this.currentProblem);
+    // 1단계 4. 단자대 핀 마킹: 왼쪽 도면에 문제지 5쪽(배관 및 기구 배치도)을 띄워 배관도 위치와 함께 보기
+    this.stage1Engine.onShowPiping = () => this.showPipingPage();
 
     // 이벤트 리스너 등록
     this.bindEvents();
@@ -105,18 +107,22 @@ class AppController {
   bindEvents() {
     // 1단계 툴바 버튼
     document.getElementById('btn-play-all')?.addEventListener('click', () => {
+      this.showBoardPage();   // 시작은 문제지 6쪽 배치도 (4. 핀 마킹에서 5쪽 배관도로)
       this.stage1Engine.playAll();
     });
 
     document.getElementById('btn-draw-lines')?.addEventListener('click', () => {
+      this.showBoardPage();
       this.stage1Engine.drawDraftingLines(true);
     });
 
     document.getElementById('btn-mount-comps')?.addEventListener('click', () => {
+      this.showBoardPage();
       this.stage1Engine.mountComponents(true);
     });
 
     document.getElementById('btn-masking-tape')?.addEventListener('click', () => {
+      this.showBoardPage();
       this.stage1Engine.applyMaskingTape(true);
     });
 
@@ -130,6 +136,7 @@ class AppController {
       if (this.stage2Engine) this.stage2Engine.currentStep = 0;
       this.stage4Engine?.clearWires();
       this.stage1Engine.reset();
+      this.showBoardPage();
       this.resetZoom();
     });
 
@@ -549,6 +556,20 @@ class AppController {
 
   docPagePath(page = this.docPage) {
     return `assets/problems/${String(this.currentProblem.id).padStart(2, '0')}/page-${String(page).padStart(2, '0')}.png`;
+  }
+
+  /** 왼쪽 도면을 문제지 6쪽(2) 제어판 내부 기구 배치도 · 단자대)으로 — 18과제 모두 6쪽 */
+  showBoardPage() {
+    this.docPage = 6;
+    if (!this.docMode) this.setDocMode(true);
+    else this.updateDocView();
+  }
+
+  /** 왼쪽 도면을 문제지 5쪽(1) 배관 및 기구 배치도)으로 — 18과제 모두 5쪽 */
+  showPipingPage() {
+    this.docPage = 5;
+    if (!this.docMode) this.setDocMode(true);
+    else this.updateDocView();
   }
 
   gotoDocPage(page) {

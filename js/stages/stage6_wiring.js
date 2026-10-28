@@ -304,7 +304,7 @@ export class Stage6Wiring {
             // 외부 TB 단자대 핀으로
             const d = bundle.device;
             const slot = pinInfo.slot ?? k;   // 단자 위치 (결선 순서와 별개)
-            const tPin = d.edge === 'x' ? [d.at, d.from + slot * d.step] : [d.from + slot * d.step, d.at];
+            const tPin = this.tbGeometry(bundle).slot(slot);   // 5단계 그림과 같은 계산 (세로 단자대 = 배관 중앙 기준)
             const mid = d.edge === 'x' ? [(last[0] + d.at) / 2, last[1]] : [last[0], (last[1] + d.at) / 2];
             pts.push(mid, d.edge === 'x' ? [mid[0], tPin[1]] : [tPin[0], mid[1]], tPin);
           }

@@ -14,6 +14,7 @@
 
 import { ensureGlobalDeviceDefs, deviceFace, BOX_LAYOUTS } from '../components/control_devices.js';
 import { tbBlockGeometry, DEFAULT_TB_BLOCKS } from '../components/tb_blocks.js';
+import { playChalkStroke } from '../components/audio.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -473,12 +474,18 @@ export class Stage5PipingDraft {
     return new Promise(r => setTimeout(r, ms / this.speed));
   }
 
+  /** 분필로 긋는 "사각사각" 소리 (빨리 감기 중에는 생략, 한 획 최대 3초) */
+  chalkSound(strokes = 1, sec = 0.2) {
+    if (this.speed <= 2) playChalkStroke(strokes, Math.min(3, Math.max(0.12, sec)));
+  }
+
   /** 경로를 시작점 ➜ 끝점 방향으로 그리는 애니메이션 (실선 전용) */
-  async drawStroke(el, msPer100mm = 260) {
+  async drawStroke(el, msPer100mm = 260, chalk = false) {
     let len = 0;
     try { len = el.getTotalLength(); } catch (e) { len = 0; }
     if (!len) return;
     const duration = Math.max(250, (len / 100) * msPer100mm) / this.speed;
+    if (chalk) this.chalkSound(1, duration / 1000);   // 분필로 긋는 소리 (선 긋는 시간만큼)
     el.style.strokeDasharray = `${len} ${len}`;
     el.style.strokeDashoffset = `${len}`;
     const anim = el.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration, easing: 'linear', fill: 'forwards' });
@@ -489,10 +496,11 @@ export class Stage5PipingDraft {
   }
 
   /** 점선 수평선을 왼쪽 ➜ 오른쪽으로 늘려 그리는 애니메이션 */
-  async drawLineX(line, ms = 900) {
+  async drawLineX(line, ms = 900, chalk = false) {
     const x1 = parseFloat(line.getAttribute('x1'));
     const x2 = parseFloat(line.getAttribute('x2'));
     const duration = ms / this.speed;
+    if (chalk) this.chalkSound(1, duration / 1000);
     const start = performance.now();
     await new Promise(resolve => {
       const tick = (now) => {
@@ -855,7 +863,7 @@ export class Stage5PipingDraft {
             <line x1="${e.x - 9}" y1="${ey}" x2="${e.x + 9}" y2="${ey}" />
             <line x1="${e.x}" y1="${ey - 9}" x2="${e.x}" y2="${ey + 9}" />
           </g>`);
-        if (isAnimated) { this.popIn(m, 180); if (!await wait(220)) return; }
+        if (isAnimated) { this.popIn(m, 180); this.chalkSound(2, 0.16); if (!await wait(220)) return; }
       }
       if (!await wait(500)) return;
 
@@ -873,7 +881,7 @@ export class Stage5PipingDraft {
         const [t] = this.appendSvg(temp, `<text x="${e.x + 8}" y="${(e.y0 + e.y1) / 2 + 5}" font-size="14" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${len}</text>`);
         if (isAnimated) {
           v.style.strokeDasharray = 'none';
-          await this.drawStroke(v, 120);
+          await this.drawStroke(v, 120, true);
           v.style.strokeDasharray = '';
           this.fadeIn(t, 160);
           if (!await wait(150)) return;
@@ -889,7 +897,7 @@ export class Stage5PipingDraft {
           if (isAnimated) {
             await this.focusBox(80, y - 120, 1720, y + 120, 20, 460);
             if (!this.alive(token)) return;
-            await this.drawLineX(h, 800);
+            await this.drawLineX(h, 800, true);
             if (!await wait(250)) return;
           }
           // ④ 수평선 위에 꺾이는 곳·J박스 자리 마킹: 바깥쪽 첫 세로선에서 J박스 쪽(예 350 · 300)과 반대쪽(예 400)
@@ -897,6 +905,10 @@ export class Stage5PipingDraft {
           if (!this.alive(token)) return;
         }
       }
+
+      // ⑤ 기준 수평선(배전반 윗변·아랫변 높이) 위에도 박스로 내려가는 배관 자리를 재서 마킹 ➜ ⑥ 거기서 수직선
+      await this.markDatumDrops(ey, side, guide, marks, temp, say, isAnimated, token);
+      if (!this.alive(token)) return;
     }
     // 세로선 길이 숫자는 길 잡기 동안만 (완성 후에는 도면 치수선으로 확인)
     if (isAnimated) {
@@ -904,6 +916,85 @@ export class Stage5PipingDraft {
       if (!await wait(900)) return;
     }
     temp.remove();
+  }
+
+  /**
+   * 기준 수평선(상단 Y=590 / 하단 Y=1010) 위 마킹 + 수직선
+   * - 배전반 밖에서 이 높이에 끝나는 배관(컨트롤박스로 들어가는 배관)의 자리를 배전반 가장자리부터 재서 마킹
+   *   (1번 위: 왼쪽 250 · 300, 오른쪽 300 / 아래: 왼쪽 350)
+   * - 마킹한 곳에서 배관 수평선까지 수직선을 그어 박스로 내려가는(올라가는) 길을 잡음
+   */
+  async markDatumDrops(ey, side, guide, marks, temp, say, isAnimated, token) {
+    const W = this.WALL;
+    const drops = [];
+    this.pipes.forEach(p => {
+      if (p.kind === 'CABLE') return;
+      const pts = p.points;
+      [[pts[0], pts[1]], [pts[pts.length - 1], pts[pts.length - 2]]].forEach(([q, nb]) => {
+        if (!nb || q[1] !== ey || nb[0] !== q[0]) return;
+        if (q[0] >= W.BOX_LEFT && q[0] <= W.BOX_RIGHT) return;   // 배전반 출구는 ①에서 마킹
+        if (!drops.some(d => d.x === q[0])) drops.push({ x: q[0], y1: nb[1] });
+      });
+    });
+    if (!drops.length) return;
+    const left = drops.filter(d => d.x < W.BOX_LEFT).sort((a, b) => b.x - a.x);
+    const right = drops.filter(d => d.x > W.BOX_RIGHT).sort((a, b) => a.x - b.x);
+    const groups = [{ from: W.BOX_LEFT, list: left, name: '왼쪽' }, { from: W.BOX_RIGHT, list: right, name: '오른쪽' }].filter(g => g.list.length);
+    const edgeName = side === 'top' ? '윗변' : '아랫변';
+    const desc = groups.map(g => `${g.name} <b>${g.list.map((d, i) => Math.abs(d.x - (i ? g.list[i - 1].x : g.from))).join(' · ')}</b>`).join(', ');
+    const xs = drops.map(d => d.x);
+    if (isAnimated) {
+      await this.focusBox(Math.min(...xs, W.BOX_LEFT) - 60, ey - 110, Math.max(...xs, W.BOX_RIGHT) + 60, ey + 110, 20, 460);
+      if (!this.alive(token)) return;
+    }
+    say(`⑤ <b>${side === 'top' ? '상단' : '하단'} 기준 수평선</b> 위에도 컨트롤박스로 가는 배관 자리를 재서 마킹합니다. 배전반 ${edgeName} 끝에서 ${desc} mm`);
+    const dir = side === 'top' ? 1 : -1;   // 치수는 배관이 없는 쪽(위 기준선 = 아래, 아래 기준선 = 위)
+    for (const g of groups) {
+      let prev = g.from;
+      for (const d of g.list) {
+        const [dim] = this.appendSvg(temp, `
+          <g text-anchor="middle">
+            <line x1="${prev}" y1="${ey + dir * 14}" x2="${d.x}" y2="${ey + dir * 14}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${prev}" y1="${ey + dir * 6}" x2="${prev}" y2="${ey + dir * 22}" stroke="#111827" stroke-width="1.5" />
+            <line x1="${d.x}" y1="${ey + dir * 6}" x2="${d.x}" y2="${ey + dir * 22}" stroke="#111827" stroke-width="1.5" />
+            <text x="${(prev + d.x) / 2}" y="${ey + dir * 22 + (dir > 0 ? 12 : 0)}" font-size="14" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${Math.abs(d.x - prev)}</text>
+          </g>`);
+        const [m] = this.appendSvg(marks, `
+          <g filter="url(#s5-chalk)" stroke="#f8fafc" stroke-width="4" stroke-linecap="round">
+            <line x1="${d.x - 9}" y1="${ey}" x2="${d.x + 9}" y2="${ey}" />
+            <line x1="${d.x}" y1="${ey - 9}" x2="${d.x}" y2="${ey + 9}" />
+          </g>`);
+        if (isAnimated) {
+          this.fadeIn(dim, 160);
+          this.popIn(m, 180);
+          this.chalkSound(2, 0.16);
+          await this.sleep(320);
+          if (!this.alive(token)) return;
+        }
+        prev = d.x;
+      }
+    }
+    if (isAnimated) await this.sleep(400);
+
+    // ⑥ 마킹한 곳에서 배관 수평선까지 수직선
+    if (isAnimated) {
+      const ys = drops.map(d => d.y1);
+      await this.focusBox(Math.min(...xs) - 80, Math.min(ey, ...ys) - 60, Math.max(...xs) + 80, Math.max(ey, ...ys) + 60, 20, 460);
+      if (!this.alive(token)) return;
+    }
+    say(`⑥ ${side === 'top' ? '위 배관 수평선에서 상단 기준 수평선 마킹까지' : '하단 기준 수평선 마킹에서 아래 배관 수평선까지'} <b>수직선을 위에서 아래로 내려</b> 긋습니다. 이 선을 따라 배관이 컨트롤박스로 들어갑니다.`);
+    for (const d of drops) {
+      const [ya, yb] = side === 'top' ? [d.y1, ey] : [ey, d.y1];   // 항상 위 ➜ 아래로 긋기
+      const [v] = this.appendSvg(guide, `<line x1="${d.x}" y1="${ya}" x2="${d.x}" y2="${yb}" stroke="#fef9c3" stroke-width="2.5" stroke-dasharray="12,6" opacity="0.95" />`);
+      const [t] = this.appendSvg(temp, `<text x="${d.x + 8}" y="${(ey + d.y1) / 2 + 5}" font-size="14" font-weight="900" fill="#111827" paint-order="stroke" stroke="#fef3c7" stroke-width="3">${Math.abs(d.y1 - ey)}</text>`);
+      if (isAnimated) {
+        await this.drawStroke(v, 120, true);
+        this.fadeIn(t, 160);
+        await this.sleep(150);
+        if (!this.alive(token)) return;
+      }
+    }
+    if (isAnimated) await this.sleep(400);
   }
 
   /**
@@ -950,6 +1041,7 @@ export class Stage5PipingDraft {
         if (isAnimated) {
           this.fadeIn(dim, 160);
           this.popIn(m, 180);
+          this.chalkSound(2, 0.16);
           await this.sleep(300);
           if (!this.alive(token)) return;
         }
@@ -993,7 +1085,7 @@ export class Stage5PipingDraft {
         <line x1="80" y1="${d.y}" x2="1720" y2="${d.y}" stroke="#38bdf8" stroke-width="3" stroke-dasharray="10,6" opacity="0.95" />
       `);
       if (isAnimated) {
-        await this.drawLineX(line, 900);
+        await this.drawLineX(line, 900, true);
         if (!this.alive(token)) return;
       }
       const label = this.appendSvg(labelLayer, `
@@ -1025,7 +1117,7 @@ export class Stage5PipingDraft {
 
       const [center] = this.appendSvg(centerGroup, `<path d="${d}" />`);
       if (isAnimated) {
-        await this.drawStroke(center);
+        await this.drawStroke(center, 260, true);
         if (!this.alive(token)) return;
       }
 
@@ -1070,7 +1162,16 @@ export class Stage5PipingDraft {
     marksLayer.innerHTML = '';
     toolLayer.innerHTML = '';
 
-    this.updateGuideMessage("✍️ <b>[3단계: 외부단자 & 새들 위치 마킹]</b><br>💡 <b>합격 황금 공식 (컨트롤박스 커버 대기법)</b>:<br>새들 위치를 줄자로 재지 않고, <b>2구 컨트롤박스 뚜껑 커버(140mm)를 배관 끝과 코너 모서리에 직접 대고</b> 그 길이만큼 새들 마킹선(+)을 긋습니다!<br>300mm 이하 구간은 코너에서 커버 길이만큼 뺀 지점에 1개만 고정합니다.<br>🔩 <b>③ 메인전원 케이블</b>은 별도로 주는 <b>소형 새들 2개</b>를 씁니다: 맨 위 끝에서 <b>50mm 아래</b>, 배전반 윗변에서 <b>100mm 위</b>.");
+    this.updateGuideMessage("✍️ <b>[3단계: 외부단자 & 새들 위치 마킹]</b><br>💡 <b>합격 황금 공식 (컨트롤박스 커버 대기법)</b>:<br>새들 위치를 줄자로 재지 않고, <b>2구 컨트롤박스 뚜껑 커버(140mm)를 배관 끝과 코너 모서리에 직접 대고</b><br>📦 <b>여기서 '커버' = 컨트롤박스를 덮는 뚜껑(덮개)</b>이에요. 길이가 140mm라서 줄자 대신 씁니다.<br> 그 길이만큼 새들 마킹선(+)을 긋습니다!<br>300mm 이하 구간은 코너에서 커버 길이만큼 뺀 지점에 1개만 고정합니다.<br>🔩 <b>③ 메인전원 케이블</b>은 별도로 주는 <b>소형 새들 2개</b>를 씁니다: 맨 위 끝에서 <b>50mm 아래</b>, 배전반 윗변에서 <b>100mm 위</b>.");
+
+    // 3-1) 외부단자·컨트롤박스·J박스 자리를 분필로 그리고 이름을 크게 적음
+    await this.markDevicePositions(marksLayer, isAnimated, token);
+    if (!this.alive(token)) return;
+    if (isAnimated) {
+      this.updateGuideMessage("✍️ <b>[3단계: 새들 위치 마킹]</b><br>💡 이제 <b>커버(140mm)</b>를 배관 끝과 코너에 대고 새들 자리(+)를 표시합니다.<br>📦 <b>커버 = 컨트롤박스를 덮는 뚜껑(덮개)</b> — 길이 140mm라 줄자 대신 대고 표시해요.");
+      await this.sleep(500);
+      if (!this.alive(token)) return;
+    }
 
     const group = this.appendSvg(marksLayer, `<g id="s5-saddle-cross-marks"></g>`)[0];
     const total = this.saddleOrder.length;
@@ -1098,12 +1199,12 @@ export class Stage5PipingDraft {
               <rect x="${vertical ? x - 20 : x}" y="${vertical ? y : y - 20}" width="${vertical ? 40 : L}" height="${vertical ? L : 40}"
                     fill="rgba(245, 158, 11, 0.4)" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,4" rx="4" />
               <text x="${vertical ? x + 26 : x + L / 2}" y="${vertical ? y + L / 2 + 4 : y - 26}" text-anchor="${vertical ? 'start' : 'middle'}"
-                    font-size="12" font-weight="900" fill="#fef08a">${m.small ? `📏 ${L}mm (소형 새들)` : '📏 커버 140mm'}</text>
+                    font-size="12" font-weight="900" fill="#fef08a">${m.small ? `📏 ${L}mm (소형 새들)` : '📏 커버(컨트롤박스 덮개) 140mm'}</text>
             </g>
           `);
           this.fadeIn(cover, 180);
         }
-        this.updateGuideMessage(`✍️ <b>[3단계: 새들 위치 마킹 ${i + 1}/${total}]</b><br>${pipe ? `<b>${pipe.no} ${pipe.name}</b> 배관 — ` : ''}<b>${m.label}</b><br>${m.small ? `🔩 메인전원 케이블 전용 <b>소형 새들</b> 자리: 기준점에서 <b>${m.gap}mm</b> 지점에 + 마킹!` : '📏 커버(140mm)를 배관 끝/코너에 대고 반대쪽 끝에 + 마킹!'}`);
+        this.updateGuideMessage(`✍️ <b>[3단계: 새들 위치 마킹 ${i + 1}/${total}]</b><br>${pipe ? `<b>${pipe.no} ${pipe.name}</b> 배관 — ` : ''}<b>${m.label}</b><br>${m.small ? `🔩 메인전원 케이블 전용 <b>소형 새들</b> 자리: 기준점에서 <b>${m.gap}mm</b> 지점에 + 마킹!` : '📏 <b>커버(컨트롤박스 덮개, 140mm)</b>를 배관 끝/코너에 대고 반대쪽 끝에 분필로 + 마킹! (사각사각)'}`);
         await this.sleep(m.ref ? 380 : 200);
         if (!this.alive(token)) return;
       }
@@ -1119,6 +1220,7 @@ export class Stage5PipingDraft {
       `);
       if (isAnimated) {
         this.popIn(mark);
+        this.chalkSound(2, m.small ? 0.14 : 0.2);   // 분필로 + 긋는 소리 (빨리 감기 땐 생략)
         await this.sleep(160);
         if (!this.alive(token)) return;
       }
@@ -1129,6 +1231,81 @@ export class Stage5PipingDraft {
       this.updateGuideMessage(`✅ <b>[3단계 새들 마킹 완료]</b><br>배관 9개를 따라 새들 위치 <b>${total}곳</b>을 순서대로 마킹했습니다.<br>💡 300mm 이하 구간은 코너에서 커버 길이만큼 뺀 지점에 1개만 고정합니다.`);
       await this.sleep(400);
     }
+  }
+
+  /**
+   * [3단계 앞부분] 외부단자 위치 마킹 — 분필로 자리 테두리를 긋고, 옆에 흰색 큰 글씨로 이름 적기
+   * - 컨트롤박스: 위·아래 기구 자리 높이에 맞춰 박스 바깥쪽 옆에 이름 (예: PB1 / PB0)
+   * - J박스·TB 단자대: 자리 테두리 + 옆에 이름
+   */
+  async markDevicePositions(layer, isAnimated, token) {
+    const g = this.appendSvg(layer, `<g id="s5-device-name-marks" font-family="'Comic Sans MS', 'Malgun Gothic', sans-serif" font-weight="900"></g>`)[0];
+    const chalkText = (x, y, text, anchor, size = 30) =>
+      `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" fill="#f8fafc" filter="url(#s5-chalk)" paint-order="stroke" stroke="rgba(15,23,42,0.35)" stroke-width="2">${text}</text>`;
+    const outline = (x, y, w, h) =>
+      `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#f8fafc" stroke-width="3.5" stroke-dasharray="10,5" rx="3" filter="url(#s5-chalk)" />`;
+    const items = [];
+
+    // 컨트롤박스 (90 × 140): 이름 = 'PB1/PB0' ➜ 위 기구 PB1, 아래 기구 PB0 / 글씨는 배전반 반대쪽(바깥) 옆
+    this.boxes.forEach(b => {
+      const names = (typeof b === 'object' ? b.name : b).split('/');
+      const left = b.x + 45 < 900;
+      const tx = left ? b.x - 14 : b.x + 104;
+      const anchor = left ? 'end' : 'start';
+      items.push({
+        focus: [b.x - 90, b.y - 30, b.x + 180, b.y + 170],
+        say: `📦 <b>${names.join(' · ')} 컨트롤박스</b> 자리를 분필로 그리고, 옆에 이름을 크게 적습니다. (위 <b>${names[0]}</b> · 아래 <b>${names[1]}</b> — 버튼·램프 자리 높이에 맞춰)`,
+        markup: `<g>${outline(b.x, b.y, 90, 140)}${chalkText(tx, b.y + 51, names[0], anchor)}${chalkText(tx, b.y + 111, names[1], anchor)}</g>`
+      });
+    });
+
+    // J박스 (8각)
+    const [jx, jy] = this.junction;
+    items.push({
+      focus: [jx - 90, jy - 80, jx + 120, jy + 80],
+      say: '🔷 <b>J박스(8각 정션박스)</b> 자리를 분필로 그리고 옆에 <b>J</b>를 적습니다.',
+      markup: `<g><polygon points="${[[-35, -15], [-15, -35], [15, -35], [35, -15], [35, 15], [15, 35], [-15, 35], [-35, 15]].map(([a, c]) => `${jx + a},${jy + c}`).join(' ')}" fill="none" stroke="#f8fafc" stroke-width="3.5" stroke-dasharray="10,5" filter="url(#s5-chalk)" />${chalkText(jx + 44, jy - 22, 'J', 'start', 32)}</g>`
+    });
+
+    // TB 단자대: TB1(맨 위 가로) + TB2·TB3·TB4(과제 데이터)
+    const tbs = [{ id: 'TB1', x0: 845, y0: 60, w: 110, h: 30, vertical: false, outward: [0, -1] }];
+    this.tbBlocks.forEach(t => {
+      const pipe = this.pipes.find(p => p.clearance === t.id);
+      const geo = tbBlockGeometry(t.device, pipe ? pipe.points[pipe.points.length - 1] : [t.device.at, t.device.from]);
+      tbs.push({ id: t.id, ...geo });
+    });
+    tbs.forEach(t => {
+      // 세로 단자대 = 인출선 쪽 옆, 가로 단자대 = 오른쪽 옆
+      const [tx, ty, anchor] = t.vertical
+        ? (t.outward[0] < 0 ? [t.x0 - 12, t.y0 + t.h / 2 + 10, 'end'] : [t.x0 + t.w + 12, t.y0 + t.h / 2 + 10, 'start'])
+        : [t.x0 + t.w + 12, t.y0 + t.h / 2 + 10, 'start'];
+      items.push({
+        focus: [t.x0 - 100, t.y0 - 60, t.x0 + t.w + 120, t.y0 + t.h + 60],
+        say: `🔌 <b>${t.id} 단자대</b> 자리를 분필로 그리고 옆에 이름 <b>${t.id}</b>를 적습니다.`,
+        markup: `<g>${outline(t.x0, t.y0, t.w, t.h)}${chalkText(tx, ty, t.id, anchor, 28)}</g>`
+      });
+    });
+
+    if (isAnimated) {
+      this.updateGuideMessage('✍️ <b>[3단계: 외부단자 위치 마킹]</b><br>먼저 <b>컨트롤박스·J박스·TB 단자대</b>가 붙을 자리를 분필로 그리고, 옆에 <b>흰색 큰 글씨로 이름</b>을 적어 둡니다.<br>💡 버튼·스위치·램프 위치에 맞춰 적어 두면 박스를 붙일 때 위아래가 바뀌는 실수를 막을 수 있어요!');
+      await this.sleep(700);
+      if (!this.alive(token)) return;
+    }
+    for (const it of items) {
+      if (isAnimated) {
+        await this.focusBox(...it.focus, 20, 460);
+        if (!this.alive(token)) return;
+        this.updateGuideMessage(`✍️ <b>[3단계: 외부단자 위치 마킹]</b><br>${it.say}`);
+      }
+      const [el] = this.appendSvg(g, it.markup);
+      if (isAnimated) {
+        this.fadeIn(el, 300);
+        this.chalkSound(4, 0.18);   // 테두리 긋고 이름 쓰는 분필 소리
+        await this.sleep(650);
+        if (!this.alive(token)) return;
+      }
+    }
+    if (isAnimated) await this.focusAll();
   }
 
   /**

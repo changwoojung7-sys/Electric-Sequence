@@ -157,3 +157,41 @@ export function playResetChime() {
     osc.stop(at + 0.5);
   });
 }
+
+/**
+ * 분필로 칠판(합판)에 긋는 "사각사각" 소리
+ * - 거친 잡음에 빠르게 떨리는 크기 변화를 주어 분필 알갱이가 긁히는 느낌
+ * - strokes: 긋는 횟수 (+ 마킹 = 2획), dur: 한 획 길이(초)
+ */
+export function playChalkStroke(strokes = 2, dur = 0.22) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  let t = ctx.currentTime + 0.01;
+  for (let s = 0; s < strokes; s++) {
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let grain = 0;
+    for (let i = 0; i < len; i++) {
+      if (i % 90 === 0) grain = 0.35 + Math.random() * 0.65;          // 알갱이마다 세기가 달라짐
+      const env = Math.min(1, i / (len * 0.12)) * Math.min(1, (len - i) / (len * 0.25));
+      data[i] = (Math.random() * 2 - 1) * grain * env;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.setValueAtTime(2600 + Math.random() * 500, t);
+    band.frequency.linearRampToValueAtTime(3400, t + dur);
+    band.Q.value = 0.9;
+    const high = ctx.createBiquadFilter();
+    high.type = 'highpass';
+    high.frequency.value = 900;
+    const g = ctx.createGain();
+    g.gain.value = 0.32;
+    src.connect(band).connect(high).connect(g).connect(ctx.destination);
+    src.start(t);
+    t += dur + 0.06;
+  }
+}
