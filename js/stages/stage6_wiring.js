@@ -12,6 +12,7 @@
 import { boxCover } from '../components/control_devices.js';
 import { getAudioContext } from '../components/audio.js';
 import { tbBlockGeometry } from '../components/tb_blocks.js';
+import { BEND_RADIUS, roundedPathD } from '../components/pipe_bend.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -271,9 +272,12 @@ export class Stage6Wiring {
 
       // 배관 중심선을 이어 붙인 경로 (제어함 쪽 ➜ 기구 쪽)
       let center = [];
+      let radii = [];   // 배관 코너 구부림 반지름 (J박스 이음점·끝점 = 0)
       bundle.via.forEach(v => {
         const pts = pipes[v].points;
+        const r = pts.map((p, i) => (i > 0 && i < pts.length - 1 ? BEND_RADIUS[pipes[v].kind] || 0 : 0));
         center = center.length ? center.concat(pts.slice(1)) : pts.map(p => [p[0], p[1]]);
+        radii = radii.length ? radii.concat(r.slice(1)) : r;
       });
 
       const top = bundle.tb === 'TB5';
@@ -287,8 +291,10 @@ export class Stage6Wiring {
         let splitRef = null;
         let tb1End = null;    // TB1 케이블: 실제 결선·벨 테스트하는 반대쪽 끝 (TB1 단자)
         let testPts = null;   // 벨 테스터로 빛낼 전체 경로 (케이블 속 포함)
+        const bendAt = new Map();   // 배관 코너에 있는 점 ➜ 구부림 반지름 (전선도 배관처럼 둥글게)
         if (bundle.via.length) {
           const inPipe = this.offsetPolyline(center, o);
+          inPipe.forEach((p, i) => { if (radii[i]) bendAt.set(p, radii[i]); });
           const entry = inPipe[0];
           entryRef = entry;
           // 정션 경유 다발: 첫 배관(제어함 ➜ J박스)의 끝 = J박스 분기점
@@ -321,7 +327,7 @@ export class Stage6Wiring {
         // 연속 중복 점 제거
         pts = pts.filter((p, i) => i === 0 || Math.abs(p[0] - pts[i - 1][0]) > 0.01 || Math.abs(p[1] - pts[i - 1][1]) > 0.01);
         result.push({
-          bundle, pinInfo, k, pts, panelEnd: pin, deviceEnd: tb1End || pts[pts.length - 1], testPts: testPts || pts,
+          bundle, pinInfo, k, pts, bendAt, panelEnd: pin, deviceEnd: tb1End || pts[pts.length - 1], testPts: testPts || pts,
           entryIdx: entryRef ? pts.indexOf(entryRef) : -1,   // 배관 입구(제어함 가장자리) 위치
           splitIdx: splitRef ? pts.indexOf(splitRef) : -1    // J박스 분기점 위치 (정션 경유 다발만)
         });
@@ -447,7 +453,7 @@ export class Stage6Wiring {
     const style = WIRE[w.pinInfo.wire];
     const base = range ? w.pts.slice(range[0], range[1] + 1) : w.pts;
     const pts = reverse ? [...base].reverse() : base;
-    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    const d = roundedPathD(pts, (i, p) => w.bendAt?.get(p) || 0);   // 배관 코너에서는 배관처럼 둥글게
     return `
       <g class="s6-wire" data-bundle="${w.bundle.id}" data-pin="${w.pinInfo.pin}" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <path class="s6-wire-outline" d="${d}" stroke="${style.outline}" stroke-width="2.6" opacity="0.7" />
@@ -726,7 +732,7 @@ export class Stage6Wiring {
    */
   async bellTest(w) {
     const layer = this.s5.layer('tool-layer');
-    const d = w.testPts.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    const d = roundedPathD(w.testPts, (i, p) => w.bendAt?.get(p) || 0);
     const probe = ([x, y], color) => `
       <g transform="translate(${x}, ${y})">
         <circle r="10" fill="none" stroke="${color}" stroke-width="3.5" />

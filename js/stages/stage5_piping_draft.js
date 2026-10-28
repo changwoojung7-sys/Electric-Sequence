@@ -15,6 +15,7 @@
 import { ensureGlobalDeviceDefs, deviceFace, BOX_LAYOUTS } from '../components/control_devices.js';
 import { tbBlockGeometry, DEFAULT_TB_BLOCKS } from '../components/tb_blocks.js';
 import { playChalkStroke } from '../components/audio.js';
+import { BEND_RADIUS, PIPE_BORE, MIN_BEND, MAX_BEND, roundedPathD } from '../components/pipe_bend.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -35,7 +36,7 @@ const SHORT_RUN = 300;
 
 // 도면 관 종류 기호 (공식 배관도 범례): ① PE 전선관, ② 플렉시블 전선관(CD), ③ 케이블
 // 배전반 쪽 커넥터가 배전반 위로 걸쳐 올라오는 길이 (mm)
-const PANEL_OVERLAP = 3;
+const PANEL_OVERLAP = 5;   // 문제지 수험자 유의사항 5): 제어판에 커넥터를 5mm 정도 올려 고정
 
 const PIPE_KIND = {
   PE: { code: '①', num: 1, label: 'PE관', color: '#111827', tagFill: '#cbd5e1', badge: { fill: '#111827', text: '#ffffff', stroke: '#e5e7eb' } },   // 검정 PE관
@@ -477,6 +478,26 @@ export class Stage5PipingDraft {
   /** 분필로 긋는 "사각사각" 소리 (빨리 감기 중에는 생략, 한 획 최대 3초) */
   chalkSound(strokes = 1, sec = 0.2) {
     if (this.speed <= 2) playChalkStroke(strokes, Math.min(3, Math.max(0.12, sec)));
+  }
+
+  /** 꺾은선의 코너별 구부림 원호 정보 (중심·반지름·원호 path·라벨 위치) — 90° 코너 */
+  bendGeometry(pts, R) {
+    const out = [];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [a, p, b] = [pts[i - 1], pts[i], pts[i + 1]];
+      const lin = Math.hypot(p[0] - a[0], p[1] - a[1]), lout = Math.hypot(b[0] - p[0], b[1] - p[1]);
+      const uin = [(p[0] - a[0]) / lin, (p[1] - a[1]) / lin], uout = [(b[0] - p[0]) / lout, (b[1] - p[1]) / lout];
+      const cross = uin[0] * uout[1] - uin[1] * uout[0];
+      if (Math.abs(cross) < 1e-6) continue;
+      const r = Math.round(Math.min(R, lin / 2, lout / 2));
+      const s = [p[0] - uin[0] * r, p[1] - uin[1] * r], e = [p[0] + uout[0] * r, p[1] + uout[1] * r];
+      const c = [s[0] + uout[0] * r, s[1] + uout[1] * r];
+      const k = Math.SQRT1_2;
+      const mid = [c[0] + (p[0] - c[0]) * k, c[1] + (p[1] - c[1]) * k];
+      out.push({ p, r, c, mid, arcD: `M ${s[0]} ${s[1]} A ${r} ${r} 0 0 ${cross > 0 ? 1 : 0} ${e[0]} ${e[1]}`,
+        label: [p[0] + (p[0] - c[0]) * 0.25, p[1] + (p[1] - c[1]) * 0.25 + (p[1] > c[1] ? 22 : -12)] });
+    }
+    return out;
   }
 
   /** 경로를 시작점 ➜ 끝점 방향으로 그리는 애니메이션 (실선 전용) */
@@ -1477,7 +1498,7 @@ export class Stage5PipingDraft {
           return;
         }
         const atJ = e.p[0] === J[0] && e.p[1] === J[1];
-        // 배전반(제어함) 쪽 커넥터는 배전반 위로 3mm 걸쳐 올라오게 (결선하기 편하도록)
+        // 배전반(제어함) 쪽 커넥터는 배전반 위로 5mm 정도 올라오게 (수험자 유의사항 5)
         const W = this.WALL;
         const atPanel = (e.p[1] === W.BOX_TOP || e.p[1] === W.BOX_BOT) && e.p[0] >= W.BOX_LEFT && e.p[0] <= W.BOX_RIGHT;
         const shift = atJ ? J_RADIUS : (atPanel ? -PANEL_OVERLAP : 0);
@@ -1626,7 +1647,7 @@ export class Stage5PipingDraft {
   /**
    * 밀착 재단: 파이프 커터를 배전반 나무판(윗변·아랫변) 또는 컨트롤박스에 딱 붙이고(날은 바깥쪽 = 내 쪽),
    * 파이프 끝도 판·박스에 딱 붙인 채 자르면 커터 두께만큼 짧게 잘려 커넥터를 끼웠을 때 길이가 딱 맞음
-   * (배전반 쪽은 커넥터가 나무판 위로 약 3mm 걸침)
+   * (배전반 쪽은 커넥터가 나무판 위로 약 5mm 올라감 — 수험자 유의사항 5)
    * @param p 배관 끝점(판·박스 가장자리) / inner 배관 안쪽 다음 점 / target 'panel' | 'box'
    */
   async flushCut(pipe, p, inner, target, say, token) {
@@ -1668,7 +1689,7 @@ export class Stage5PipingDraft {
           <!-- 커터 날: 머리 한가운데 (커터 두께의 절반 지점에서 잘림) -->
           <rect class="fc-blade" x="8.5" y="-26" width="3" height="52" rx="1" fill="#f97316" stroke="#7c2d12" stroke-width="0.8" />
           <line class="fc-cutline" x1="10" y1="-34" x2="10" y2="34" stroke="#ffffff" stroke-width="3" style="visibility:hidden" />
-          <!-- 자른 뒤 커넥터 (배전반 쪽은 판 위로 3mm 걸침) -->
+          <!-- 자른 뒤 커넥터 (배전반 쪽은 판 위로 5mm 올라감) -->
           <g class="fc-conn" style="visibility:hidden">
             <rect x="${target === 'panel' ? -PANEL_OVERLAP : 0}" y="-13" width="${10 + (target === 'panel' ? PANEL_OVERLAP : 0) + 10}" height="26" rx="3" fill="${kind.color}" stroke="#22c55e" stroke-width="2.5" />
           </g>
@@ -1677,7 +1698,7 @@ export class Stage5PipingDraft {
           <text class="fc-t1" x="${lx}" y="${ly}" font-size="12" fill="#fde68a">① 커터를 ${where}에 딱 밀착 · 날은 바깥쪽(내 쪽)</text>
           <text class="fc-t2" x="${lx}" y="${ly + 18}" font-size="12" fill="#bae6fd" style="visibility:hidden">② 파이프도 ${where}에 딱 붙이고</text>
           <text class="fc-t3" x="${lx}" y="${ly + 36}" font-size="13" fill="#fca5a5" style="visibility:hidden">③ 싹둑! 날이 커터 가운데 ➜ 빨간 부분(커터 반 두께)만큼 잘림</text>
-          <text class="fc-t4" x="${lx}" y="${ly + 54}" font-size="12" fill="#86efac" style="visibility:hidden">${target === 'panel' ? '④ 커넥터를 끼우면 나무판 위로 약 3mm 걸침 ✔' : (target === 'junction' ? '④ 커넥터를 끼우면 J박스 노크아웃에 딱 맞음 ✔' : '④ 커넥터를 끼우면 박스 노크아웃에 딱 맞음 ✔')}</text>
+          <text class="fc-t4" x="${lx}" y="${ly + 54}" font-size="12" fill="#86efac" style="visibility:hidden">${target === 'panel' ? '④ 커넥터를 끼우면 제어판 위로 약 5mm 올라옴 ✔' : (target === 'junction' ? '④ 커넥터를 끼우면 J박스 노크아웃에 딱 맞음 ✔' : '④ 커넥터를 끼우면 박스 노크아웃에 딱 맞음 ✔')}</text>
         </g>
       </g>`);
     const show = (sel) => { const el = g.querySelector(sel); if (el) el.style.visibility = ''; return el; };
@@ -1704,7 +1725,7 @@ export class Stage5PipingDraft {
     if (!this.alive(token)) { g.remove(); return; }
 
     say(target === 'panel'
-      ? '✂️ 자른 파이프에 커넥터를 끼우면 <b>커넥터가 배전반 나무판 위로 약 3mm 살짝 걸치는</b> 딱 맞는 길이가 됩니다. (결선하기 편해요!)'
+      ? '✂️ 자른 파이프에 커넥터를 끼우면 <b>커넥터가 제어판(배전반 나무판) 위로 약 5mm 올라오는</b> 딱 맞는 길이가 됩니다.<br>📋 문제지 <b>수험자 유의사항 5)</b>: 제어판에 전선관 및 케이블용 커넥터를 <b>5mm 정도 올리고</b> 새들로 고정!'
       : `✂️ 자른 파이프에 커넥터를 끼우면 <b>${where} 노크아웃에 딱 맞게</b> 들어갑니다.`);
     this.popIn(show('.fc-conn'), 220); show('.fc-t4');
     await this.sleep(1000);
@@ -1769,7 +1790,7 @@ export class Stage5PipingDraft {
     const lastT = pipe.clearance ? 'tb' : endTarget(pipe.points[pipe.points.length - 1]);
     const flip = lastT === 'junction' || (lastT === 'box' && startT === 'panel');
     const pts = flip ? this.pipeBodyPoints(pipe).reverse() : this.pipeBodyPoints(pipe);
-    const d = this.pointsToD(pts);
+    const d = roundedPathD(pts, BEND_RADIUS[pipe.kind] || 0);   // 코너는 구부림 반지름만큼 둥글게 (PE 크게 · CD 조금 작게)
     const corners = pipe.points.slice(1, -1);
     const [connEnd, cutEnd] = flip ? ['end', 'start'] : ['start', 'end'];
     const connTarget = flip ? lastT : startT;
@@ -1810,24 +1831,57 @@ export class Stage5PipingDraft {
       body.style.visibility = '';
       // ② 스프링 벤더 삽입 — 딱딱한 PE관이 꺾이는 코너에만 사용 (CD관은 주름관이라 손으로 구부림)
       const useSpring = pipe.kind === 'PE' && corners.length > 0;
+      const R = BEND_RADIUS[pipe.kind] || 0;
+      const bends = corners.length && R ? this.bendGeometry(pts, R) : [];
+      const minR = MIN_BEND(pipe.kind), maxR = MAX_BEND(pipe.kind);
       if (useSpring) {
-        say(`② 꺾이는 코너 <b>${corners.length}곳</b>에 <b>스프링 벤더를 넣고</b> 천천히 구부립니다. (PE관 찌그러짐 방지)`);
-      } else if (pipe.kind === 'CD') {
-        say('② CD관(주름관)은 부드러워서 <b>스프링 벤더 없이</b> 손으로 구부려 밀어 넣습니다.');
+        say(`② <span style="color:#fca5a5">⚠️ <b>PE관은 딱딱해서 그냥 구부리면 찌그러지거나 꺾여요 ➜ 감점·불합격!</b></span><br>🌀 꺾이는 코너 <b>${corners.length}곳</b>마다 <b>스프링 벤더를 관 속 구부릴 자리까지 꼭 밀어 넣고</b>, 천천히 <b>크게 둥글게</b> 구부립니다.`);
+      } else if (pipe.kind === 'CD' && corners.length) {
+        say(`② CD관(주름관)은 부드러워서 <b>스프링 벤더 없이</b> 손으로 구부려 밀어 넣습니다. 그래도 곡률 반지름은 <b>${minR}~${maxR}mm(안지름 ${PIPE_BORE.CD}mm의 6배 이상 8배 이하)</b>로 부드럽게!`);
       } else {
         say('② 곧은 배관이라 스프링 벤더 없이 바로 밀어 넣습니다.');
       }
-      const springs = (useSpring ? corners : []).map(([cx, cy]) => `
-        <g transform="translate(${cx}, ${cy})">
-          <circle r="22" fill="none" stroke="#fef08a" stroke-width="2" stroke-dasharray="4,3" />
-          <path d="M -14 -6 l 4 12 l 4 -12 l 4 12 l 4 -12 l 4 12 l 4 -12" fill="none" stroke="#e2e8f0" stroke-width="2.2" />
-          <text y="-28" text-anchor="middle" font-size="11" font-weight="900" fill="#fef08a">스프링 벤더</text>
-        </g>`).join('');
       const toolLayer = this.layer('tool-layer');
-      const springEls = springs ? this.appendSvg(toolLayer, `<g>${springs}</g>`) : [];
+      // 스프링 벤더: 구부리는 코너의 관 속에 들어간 용수철 (관 위에 비쳐 보이게)
+      const springEls = useSpring ? this.appendSvg(toolLayer, `<g class="s5-springs">${bends.map(b => `
+        <g>
+          <path d="${b.arcD}" fill="none" stroke="#0f172a" stroke-width="11" stroke-linecap="round" opacity="0.5" />
+          <path d="${b.arcD}" fill="none" stroke="#e2e8f0" stroke-width="8" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+          <text x="${b.label[0]}" y="${b.label[1]}" text-anchor="middle" font-size="12" font-weight="900" fill="#fef08a" paint-order="stroke" stroke="#0f172a" stroke-width="3">🌀 스프링 벤더</text>
+        </g>`).join('')}</g>`) : [];
+      if (useSpring) {
+        await this.sleep(900);
+        if (!this.alive(token)) return;
+      }
       await this.drawStroke(body, 160);
-      springEls.forEach(el => el.remove());
       if (!this.alive(token)) return;
+
+      // 코너마다 구부림 반지름 확인 (관 안지름의 6배 이상)
+      for (const b of bends) {
+        await this.focusBox(b.p[0] - 170, b.p[1] - 170, b.p[0] + 170, b.p[1] + 170, 20, 460);
+        if (!this.alive(token)) return;
+        const [ann] = this.appendSvg(toolLayer, `
+          <g class="s5-bend-radius" font-weight="900">
+            <circle cx="${b.c[0]}" cy="${b.c[1]}" r="4" fill="#facc15" />
+            <line x1="${b.c[0]}" y1="${b.c[1]}" x2="${b.mid[0]}" y2="${b.mid[1]}" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 4" />
+            <text x="${b.c[0] + (b.c[0] < b.p[0] ? -8 : 8)}" y="${b.c[1] + (b.c[1] < b.p[1] ? -10 : 22)}" text-anchor="${b.c[0] < b.p[0] ? 'end' : 'start'}" font-size="15" fill="#fef08a" paint-order="stroke" stroke="#0f172a" stroke-width="4">R ${b.r}mm</text>
+            <text x="${b.c[0] + (b.c[0] < b.p[0] ? -8 : 8)}" y="${b.c[1] + (b.c[1] < b.p[1] ? 8 : 40)}" text-anchor="${b.c[0] < b.p[0] ? 'end' : 'start'}" font-size="12" fill="#bbf7d0" paint-order="stroke" stroke="#0f172a" stroke-width="3.5">${minR} ≤ R ≤ ${maxR} (안지름 6~8배) ✔</text>
+          </g>`);
+        this.fadeIn(ann, 200);
+        say(`📐 <b>곡률 반지름 확인</b> — ${pipe.kind === 'PE' ? 'PE관' : 'CD관'} 코너 <b>R ${b.r}mm</b> ➜ 안지름 ${PIPE_BORE[pipe.kind]}mm의 6배(<b>${minR}</b>) 이상 · 8배(<b>${maxR}</b>) 이하 ✔<br>📋 문제지 <b>수험자 유의사항 3)</b>: 전선관의 곡률 반지름은 <b>전선관 안지름의 6배 이상, 8배 이하</b>로 작업해야 합니다.<br>⚠️ 너무 급하게 꺾으면(6배 미만) 관이 찌그러지고, 너무 크게 돌리면(8배 초과) 규정 위반이에요.${pipe.kind === 'PE' ? '<br>PE관은 딱딱해서 라운딩이 <b>크게</b>, CD관은 주름관이라 조금 <b>작게</b> 구부러집니다.' : ''}`);
+        await this.sleep(1300);
+        ann.remove();
+        if (!this.alive(token)) return;
+      }
+      if (useSpring) {
+        say('🌀 다 구부렸으면 <b>스프링 벤더를 관에서 빼냅니다.</b> (스프링을 넣은 채로 새들을 체결하면 빼낼 수 없어요!)');
+        springEls.forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500 / this.speed, fill: 'forwards' }));
+        await this.sleep(700);
+        springEls.forEach(el => el.remove());
+        if (!this.alive(token)) return;
+        await this.focusPipe(pipe);
+        if (!this.alive(token)) return;
+      }
       parts.forEach(p => { p.style.visibility = ''; });
       this.fadeIn(g.querySelector('.s5-pipe-edge'), 200);
     }
