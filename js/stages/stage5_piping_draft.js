@@ -1260,7 +1260,7 @@ export class Stage5PipingDraft {
    * - J박스·TB 단자대: 자리 테두리 + 옆에 이름
    */
   async markDevicePositions(layer, isAnimated, token) {
-    const g = this.appendSvg(layer, `<g id="s5-device-name-marks" font-family="'Comic Sans MS', 'Malgun Gothic', sans-serif" font-weight="900"></g>`)[0];
+    const g = this.appendSvg(layer, `<g id="s5-device-name-marks" class="s5-name-marks" font-family="'Comic Sans MS', 'Malgun Gothic', sans-serif" font-weight="900"></g>`)[0];
     const chalkText = (x, y, text, anchor, size = 30) =>
       `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" fill="#f8fafc" filter="url(#s5-chalk)" paint-order="stroke" stroke="rgba(15,23,42,0.35)" stroke-width="2">${text}</text>`;
     const outline = (x, y, w, h) =>

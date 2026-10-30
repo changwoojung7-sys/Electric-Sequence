@@ -160,6 +160,7 @@ export class Stage6Wiring {
       this.svg.insertBefore(g, before);
     };
     add('s6-wires-layer', 's5-saddles-layer');
+    add('s6-slack-layer', 's5-labels-layer');   // 여유선(기구 쪽 꼬리 · J박스 여유 고리·말아 넣은 선)
     add('s6-terminals-layer', 's5-labels-layer');
     add('s6-covers-layer', 's5-labels-layer');
     add('s6-badges-layer', 's5-labels-layer');
@@ -447,6 +448,108 @@ export class Stage6Wiring {
         await this.sleep(150);
       }
     }
+    // ⑤ J박스에서 양쪽(제어함 쪽·박스 쪽)으로 각각 약 15cm씩 여유 있게 빼 둠 ➜ 결선 후 말아서 J박스 안에 넣음
+    if (isAnimated) {
+      await this.focusBox(split[0] - 170, split[1] - 190, split[0] + 170, split[1] + 70, 40, 460);
+      if (!this.alive(token)) return;
+    }
+    say('⑤ <b>J박스에서 양쪽으로 각각 약 15cm씩 여유 있게</b> 선을 빼 둡니다. (제어함 쪽 · 박스 쪽) 결선이 끝나면 남는 선을 <b>J박스 쪽으로 당겨 둥글게 말아 넣어요.</b>');
+    const [loops] = this.appendSvg(this.layer('slack-layer'), this.junctionSlackMarkup('out', all.length));
+    if (isAnimated) {
+      this.popIn(loops, 300);
+      await this.sleep(1300);
+      if (!this.alive(token)) return;
+    }
+    await this.addSlackTails(all, isAnimated, token);
+  }
+
+  /** 결선 후 J박스 여유선(양쪽 15cm 고리) ➜ J박스 쪽으로 당겨 둥글게 말아 넣기 */
+  async coilJunctionSlack(isAnimated, token) {
+    if (!this.bundles.some(b => b.via.length > 1)) return;
+    const layer = this.layer('slack-layer');
+    const out = layer.querySelector('.s6-jslack-out');
+    const [jx, jy] = this.junction;
+    if (isAnimated) {
+      await this.focusBox(jx - 170, jy - 190, jx + 170, jy + 70, 40, 460);
+      if (!this.alive(token)) return;
+      this.updateGuideMessage('🌀 <b>[6단계-3: J박스 정리]</b><br>양쪽 결선이 끝나면, J박스에서 <b>양쪽으로 15cm씩 빼 두었던 남는 선</b>을 <b>J박스 쪽으로 당겨 둥글게 말아</b> J박스 안에 넣습니다.<br>💡 시험에서는 <b>J박스(8각 박스) 뚜껑이 없어서</b> 말아 넣은 선이 그대로 보여요 — 깔끔하게 말아 넣으세요!');
+      if (out) {
+        out.style.transformOrigin = `${jx}px ${jy}px`;
+        await out.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.25)', opacity: 0 }], { duration: 900 / this.speed, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+      }
+    }
+    layer.querySelectorAll('.s6-jslack').forEach(el => el.remove());
+    const n = this.bundles.filter(b => b.via.length > 1).reduce((k, b) => k + b.pins.length, 0);
+    const [coil] = this.appendSvg(layer, this.junctionSlackMarkup('coil', n));
+    if (isAnimated) {
+      this.popIn(coil, 300);
+      await this.sleep(1200);
+    }
+  }
+
+  /** 기구 쪽 끝 여유선: 결선 자리 너머로 약 6cm 더 빼 둔 선 (결선할 때 길이에 맞춰 절단) */
+  async addSlackTails(wires, isAnimated, token) {
+    const layer = this.layer('slack-layer');
+    const tails = wires.filter(w => !w.bundle.pullSkip).map(w => {
+      const n = w.pts.length;
+      const [a, b] = [w.pts[n - 2], w.pts[n - 1]];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+      const nrm = [-u[1], u[0]];
+      const o = (w.k - 1) * 4;
+      const p = (t, side) => [b[0] + u[0] * t + nrm[0] * side, b[1] + u[1] * t + nrm[1] * side];
+      const pts = [p(0, 0), p(18, o * 0.5 + 4), p(36, o - 4), p(54, o + 6), p(62, o)];
+      const d = `M ${pts[0].join(' ')} C ${pts[1].join(' ')} ${pts[2].join(' ')} ${pts[3].join(' ')} S ${pts[4].join(' ')} ${pts[4].join(' ')}`;
+      const style = WIRE[w.pinInfo.wire];
+      return `<g class="s6-slack-tail" data-bundle="${w.bundle.id}" fill="none" stroke-linecap="round">
+        <path d="${d}" stroke="${style.outline}" stroke-width="2.6" opacity="0.7" /><path d="${d}" stroke="${style.color}" stroke-width="1.6" />
+        ${style.stripe ? `<path d="${d}" stroke="${style.stripe}" stroke-width="1.6" stroke-dasharray="4 4" />` : ''}</g>`;
+    }).join('');
+    if (!tails) return;
+    const [g] = this.appendSvg(layer, `<g class="s6-slack-tails">${tails}</g>`);
+    if (isAnimated) {
+      this.popIn(g, 200);
+      await this.sleep(250);
+    }
+  }
+
+  /**
+   * J박스 여유선
+   * - 'out': 양쪽(제어함 쪽·박스 쪽)으로 각각 약 15cm씩 빼 둔 고리 (벽면 위쪽 빈 곳으로)
+   * - 'coil': 결선 후 남는 선을 J박스 쪽으로 당겨 둥글게 말아 넣은 모습 (시험에서는 J박스 뚜껑 없음 ➜ 보임)
+   */
+  junctionSlackMarkup(mode, strands = 6) {
+    const [jx, jy] = this.junction;
+    const up = jy < 825 ? -1 : 1;                      // 벽면 빈 쪽(위쪽)으로 고리
+    const lines = Math.min(6, Math.max(3, strands));
+    if (mode === 'out') {
+      const loop = (cx, label, color, side) => {
+        const H = 62, W = 24;   // 여유 15cm (고리 한쪽 높이 ≈ 6cm)
+        const paths = Array.from({ length: lines }, (_, i) => {
+          const o = (i - (lines - 1) / 2) * 2.2;
+          const x0 = cx - W / 2 + o, x1 = cx + W / 2 - o;
+          const y0 = jy + up * 20, yt = jy + up * (H + o);
+          return `<path d="M ${x0} ${y0} L ${x0} ${yt + up * -W / 2} A ${(x1 - x0) / 2} ${(x1 - x0) / 2} 0 0 ${up < 0 ? 1 : 0} ${x1} ${yt + up * -W / 2} L ${x1} ${y0}" />`;
+        }).join('');
+        return `<g fill="none" stroke-linecap="round">
+            <g stroke="#78350f" stroke-width="2.6" opacity="0.7">${paths}</g><g stroke="#facc15" stroke-width="1.6">${paths}</g>
+          </g>
+          <g transform="translate(${cx + side * 84}, ${jy + up * (H + 4)})">
+            <rect x="-56" y="-12" width="112" height="22" rx="11" fill="#0f172a" stroke="${color}" stroke-width="1.5" />
+            <text y="4" text-anchor="middle" font-size="11" font-weight="900" fill="${color}">${label}</text>
+          </g>`;
+      };
+      return `<g class="s6-jslack s6-jslack-out">${loop(jx - 24, '제어함 쪽 여유 15cm', '#fde68a', -1)}${loop(jx + 24, '박스 쪽 여유 15cm', '#bae6fd', 1)}</g>`;
+    }
+    // 'coil': J박스 안에 둥글게 말아 넣은 선
+    const turns = Array.from({ length: lines }, (_, i) => {
+      const r = 10 + i * 3.2;
+      return `<circle cx="${jx}" cy="${jy}" r="${r.toFixed(1)}" />`;
+    }).join('');
+    return `<g class="s6-jslack s6-jslack-coil">
+        <g fill="none" stroke="#78350f" stroke-width="2.6" opacity="0.7">${turns}</g>
+        <g fill="none" stroke="#facc15" stroke-width="1.6" stroke-dasharray="40 6">${turns}</g>
+      </g>`;
   }
 
   wireMarkup(w, { reverse = false, range = null } = {}) {
@@ -570,11 +673,12 @@ export class Stage6Wiring {
     this.currentStep = 2;
     const wireLayer = this.layer('wires-layer');
     wireLayer.innerHTML = '';
+    this.layer('slack-layer').innerHTML = '';
     this.layer('terminals-layer').innerHTML = '';
     this.drawPreassembledCommons();   // 가조립 때 이어 둔 박스 공통 연결선은 그대로
     this.layer('badges-layer').querySelectorAll('.s6-tape, .s6-count').forEach(el => el.remove());
 
-    this.updateGuideMessage("🧵 <b>[6단계-2: 전선 입선]</b><br><b>먼 쪽 배관부터</b> 요비선에 전선을 감아 당겨 넣습니다. (먼 곳을 먼저 넣어야 이미 들어간 전선과 엉키지 않아요!)<br>🔀 <b>J박스를 거치는 다발</b>은 제어함에서 3가닥씩 테이핑 ➜ 한 묶음 ➜ J박스까지 ➜ 3가닥씩 분리합니다.<br>제어선은 <b>황색</b>, 전동기선은 <b>갈·흑·회</b>, 접지선은 <b>녹황</b>입니다.");
+    this.updateGuideMessage("🧵 <b>[6단계-2: 전선 입선]</b><br><b>먼 쪽 배관부터</b> 요비선에 전선을 감아 당겨 넣습니다. (먼 곳을 먼저 넣어야 이미 들어간 전선과 엉키지 않아요!)<br>🔀 <b>J박스를 거치는 다발</b>은 제어함에서 3가닥씩 테이핑 ➜ 한 묶음 ➜ J박스까지 ➜ 3가닥씩 분리합니다.<br>제어선은 <b>황색</b>, 전동기선은 <b>갈·흑·회</b>, 접지선은 <b>녹황</b>입니다.<br>✂️ 선은 <b>항상 여유 있게 빼 두고</b>, 결선할 때 길이에 맞춰 잘라 마무리합니다.");
     if (isAnimated) await this.sleep(600);
 
     // 정션(J박스)을 거치는 다발은 하나의 작업으로 묶음 (첫 배관이 같은 다발들)
@@ -608,8 +712,10 @@ export class Stage6Wiring {
       if (isAnimated) {
         await Promise.all(els.map(el => Promise.all([...el.querySelectorAll('path')].map(p => this.drawStroke(p, 70)))));
         if (!this.alive(token)) return;
-        await this.sleep(200);
       }
+      await this.addSlackTails(wires, isAnimated, token);
+      if (!this.alive(token)) return;
+      if (isAnimated) await this.sleep(200);
     }
 
     // ③ 케이블 심선 (제어함 안, 커넥터 ➜ TB5): 결선 단계에서 함께 처리하도록 여기서 미리 배치
@@ -820,6 +926,16 @@ export class Stage6Wiring {
         }
       }
 
+      // ✂️ 기구 쪽에 여유 있게 빼 둔 선을 결선 자리 길이에 맞춰 절단
+      const tails = [...this.layer('slack-layer').querySelectorAll(`.s6-slack-tail[data-bundle="${bundle.id}"]`)];
+      if (tails.length && isAnimated) {
+        say(`✂️ 여유 있게 빼 둔 선을 <b>결선할 길이에 맞춰 절단</b>하고 피복을 벗깁니다. (짧게 자르면 다시 뺄 수 없으니 넉넉하게 빼 두었다가 마지막에 잘라요)`);
+        tails.forEach(t => t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450 / this.speed, fill: 'forwards' }));
+        await this.sleep(550);
+        if (!this.alive(token)) return;
+      }
+      tails.forEach(t => t.remove());
+
       // ③ 확인한 선을 박스의 버튼·스위치·램프(또는 외부 단자대)에 결선
       if (spec) {
         const [terms] = this.appendSvg(termLayer, this.boxTerminalsMarkup(spec));
@@ -861,6 +977,10 @@ export class Stage6Wiring {
         }
       }
     }
+    // J박스: 결선이 끝나면 양쪽 여유선을 J박스 쪽으로 당겨 둥글게 말아 넣음 (시험에서는 J박스 뚜껑 없음)
+    await this.coilJunctionSlack(isAnimated, token);
+    if (!this.alive(token)) return;
+
     // TB 단자대 바깥쪽 인출선 (TB1 전원 인입선, TB4 전극/리밋스위치선)
     await this.drawExternalLeads(isAnimated, token);
     if (!this.alive(token)) return;
@@ -1001,17 +1121,13 @@ export class Stage6Wiring {
     const coverLayer = this.layer('covers-layer');
     coverLayer.innerHTML = '';
 
-    this.updateGuideMessage("📦 <b>[6단계-4: 박스 뚜껑 결합]</b><br>2구 박스 4개와 J박스에 뚜껑을 덮고 <b>네 모서리 나사</b>를 조입니다.");
+    this.updateGuideMessage("📦 <b>[6단계-4: 박스 뚜껑 결합]</b><br>2구 박스 4개에 뚜껑을 덮고 <b>네 모서리 나사</b>를 조입니다.<br>💡 <b>J박스(8각 박스)는 시험에서 뚜껑이 없어서</b> 말아 넣은 선이 보이는 그대로 둡니다.");
     if (isAnimated) await this.sleep(500);
 
     const covers = [
       // 뚜껑 앞면으로 버튼·셀렉터·램프·부저가 드러난 실제 완성 모습 (네 모서리 나사)
-      ...this.boxCovers.map(b => `<g class="s6-cover" transform="translate(${b.x}, ${b.y})">${boxCover(b.top ? b : b.name)}</g>`),
-      `<g class="s6-cover" transform="translate(${this.junction[0]}, ${this.junction[1]})">
-          <polygon points="-35,-15 -15,-35 15,-35 35,-15 35,15 15,35 -15,35 -35,15" fill="url(#dev-metal)" stroke="#475569" stroke-width="2" />
-          <circle r="4" cx="-20" cy="-20" fill="#94a3b8" stroke="#334155" /><circle r="4" cx="20" cy="20" fill="#94a3b8" stroke="#334155" />
-          <text y="5" text-anchor="middle" font-size="12" font-weight="900" fill="#334155">J</text>
-        </g>`
+      ...this.boxCovers.map(b => `<g class="s6-cover" transform="translate(${b.x}, ${b.y})">${boxCover(b.top ? b : b.name)}</g>`)
+      // J박스(8각 박스)는 시험에서 뚜껑 없음 ➜ 말아 넣은 선이 보이게 그대로
     ];
     for (const markup of covers) {
       const [el] = this.appendSvg(coverLayer, markup);
@@ -1049,7 +1165,7 @@ export class Stage6Wiring {
     this.runToken++;
     this.isPlaying = false;
     this.currentStep = 0;
-    ['wires-layer', 'terminals-layer', 'covers-layer', 'badges-layer'].forEach(n => {
+    ['wires-layer', 'slack-layer', 'terminals-layer', 'covers-layer', 'badges-layer'].forEach(n => {
       const l = this.layer(n);
       if (l) l.innerHTML = '';
     });

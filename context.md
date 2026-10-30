@@ -331,7 +331,28 @@ flowchart LR
 
 ---
 
+### 3단계 리밋스위치 핀번호 (10~18번)
+- `pinPlacements`에 `p-ls1`(1-1/1-2)·`p-ls2`(2-1/2-2) — LS 접점 좌표(operation.contacts) 오른쪽, 위 c−38 · 아래 c+16. `pinBadgeMarkup`은 긴 번호면 뱃지 폭 자동 확대.
+
+### 2단계 주회로 도통 테스트
+- `btn-stage2-continuity` ➜ `Stage2.runContinuityTest()` (전체 결선 시연 끝에도 자동). 구간은 결선 데이터에서 자동 생성(`buildContinuityTests`): ① TB1➜MCCB(ON)➜EOCR ② 퓨즈 상단 ③ EOCR 7·8·9➜MC1·MC2 ④ MC➜TB2·TB3 ⑤ PE. 판정은 DOM에 깔린 전선 + MCCB ON 내부 연결 union-find(`connectivity`). 결과 `lastContinuity`.
+
+### 과제 전환 시 처음 상태
+- 과제 선택은 `?p=번호`로 새로 불러옴. 뒤로·앞으로 가기(bfcache)로 돌아오면 `pageshow`에서 새로 불러오고 드롭다운을 현재 과제로 맞춤.
+
+### 4단계 그룹마다 벨 테스트 필수
+- `runGroup`(애니메이션) 끝 ➜ `pendingTest` 설정·벨 테스터 버튼 깜빡임(`bell-required`) ➜ `testContinuity` 통과 시 해제·칩 ✔(`bell-tested`). 통과 전 다른 그룹은 `checkBellBeforeNext`가 막음. 자동 시연은 `pressBellTester`로 그룹마다 버튼 누르는 장면.
+
+### 6단계 여유선 · J박스 (사용자 확정)
+- 입선 때 기구 쪽 끝을 여유 있게 빼 두고(`addSlackTails`, `s6-slack-layer`) 결선 단계에서 길이에 맞춰 절단.
+- J박스 경유 다발: J박스에서 양쪽 약 15cm 여유 고리(`junctionSlackMarkup('out')`) ➜ 결선 후 J박스 안에 둥글게 말아 넣기(`coilJunctionSlack`, 'coil'). J박스는 시험에서 뚜껑 없음 ➜ 4. 뚜껑 결합에서 제외.
+
+### 3단계 초기화 (연습 모드)
+- 3단계 첫 화면은 빈 도면(핀번호·공통 표시 숨김) — `render()`에서 핀번호를 그리지 않음.
+- `btn-stage3-reset` ➜ `Stage3.reset()`: 시연 중단, 핀번호·그루핑·공통 표시 숨김, 연습 안내 카드. '핀번호 전체 쓰기'가 공통 표시도 다시 보이게 함.
+
 ## 10. 7단계: 전원 투입 & 동작 테스트
+- **벽면 보기 기구 확대** (`WALL_BOX_ZOOM`, `wallZoom`): 컨트롤박스·리밋스위치·전동기를 누르면 2배 ↔ 원래 크기(돋보기 ＋/－). 버튼·셀렉터·리밋스위치 몸체는 조작. 셀렉터는 pointerdown(운전 중 다시 그리기에도 안 끊김). 5단계 분필 이름(`.s5-name-marks`)은 7단계 벽면에서 숨김.
 
 - 엔진: `js/stages/stage7_operation.js` — 회로는 과제 데이터의 `board.operation`(접점·부하 목록)만으로 계산 → 다른 과제는 데이터만 추가.
   - **노드 = 3단계 전위 그룹 번호(1번 ①~⑮, 2·3번 ①~⑭)**, 전원 ① ➜ 닫힌 접점을 따라 전기가 오는 노드를 찾고, 그 노드의 코일·램프·부저 동작. 코일 변화로 접점이 바뀌면 안정될 때까지 반복(100ms 주기).

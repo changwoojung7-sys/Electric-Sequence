@@ -232,6 +232,8 @@ export const problem13 = {
         { comp: "MC2", power: "6 - 12", contacts: [{ type: "보조 a접점 ➜ GL", pins: "4 - 10" }, { type: "주접점", pins: "1-7, 2-8, 3-9" }] }
       ],
       pinPlacements: [
+        { id: "p-ls1", comp: "LS1", label: "1-1 - 1-2", type: "a접점", orientation: "vertical_exact", x: 958, topX: 966, topY: 315, botX: 966, botY: 369, top: "1-1", bot: "1-2" },  // 리밋스위치 LS1 (외부 단자 1-1·1-2)
+        { id: "p-ls2", comp: "LS2", label: "2-1 - 2-2", type: "a접점", orientation: "vertical_exact", x: 877, topX: 885, topY: 641, botX: 885, botY: 695, top: "2-1", bot: "2-2" },  // 리밋스위치 LS2 (외부 단자 2-1·2-2)
         { id: "p-eocr-b", comp: "EOCR", label: "10 - 4", type: "b접점", orientation: "horizontal", x: 653, y: 292, left: "10", right: "4", leftX: 595, rightX: 682, badgeY: 264 },
         { id: "p-eocr-a", comp: "EOCR", label: "10 - 5", type: "a접점", orientation: "vertical_exact", x: 673, topX: 681, topY: 642, botX: 681, botY: 696, top: "10", bot: "5" },
         { id: "p-eocr-pwr", comp: "EOCR", label: "6, 12", type: "전원", orientation: "coil_exact", x: 592, y: 760, top: "6", bot: "12" },

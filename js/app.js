@@ -257,6 +257,11 @@ class AppController {
       this.stage2Engine?.runStep(6, true);
     });
 
+    // 주회로 도통 테스트 (벨 테스터): 결선 후 구간별 확인
+    document.getElementById('btn-stage2-continuity')?.addEventListener('click', () => {
+      this.stage2Engine?.runContinuityTest(true);
+    });
+
     document.getElementById('btn-stage2-clear')?.addEventListener('click', () => {
       this.stage2Engine?.clearWires();
       this.stage2Engine?.updateGuideMessage("⚡ <b>[2단계 주회로 결선]</b>: 전선이 초기화되었습니다. 아래 <b>'1. ⚡ PE 접지선 결선 (최우선)'</b> 버튼을 눌러보세요!");
@@ -285,6 +290,11 @@ class AppController {
       this.stage3Engine?.renderPinBadges(true);
     });
 
+    // 핀번호 매기기 연습: 핀번호·그루핑·공통 표시를 모두 지운 빈 도면으로
+    document.getElementById('btn-stage3-reset')?.addEventListener('click', () => {
+      this.stage3Engine?.reset();
+    });
+
     document.getElementById('btn-stage3-ref-internal')?.addEventListener('click', () => {
       const modal = document.getElementById('blueprint-modal');
       const modalImg = document.getElementById('modal-img');
@@ -308,6 +318,7 @@ class AppController {
 
     // FLS 최우선 결선 버튼
     document.getElementById('btn-stage4-fls')?.addEventListener('click', () => {
+      if (this.stage4Engine && !this.stage4Engine.checkBellBeforeNext(0)) return;   // 앞 그룹 벨 테스트 먼저
       this.stage4Engine?.runGroup(0, true);
     });
 
@@ -319,6 +330,8 @@ class AppController {
 
     chips.forEach(btn => {
       btn.addEventListener('click', () => {
+        // 그룹 하나를 배선할 때마다 벨 테스트 필수: 앞 그룹을 확인하지 않았으면 넘어가지 않음
+        if (this.stage4Engine && !this.stage4Engine.checkBellBeforeNext(parseInt(btn.dataset.group, 10))) return;
         chips.forEach(b => {
           b.style.borderColor = groupColorOf(parseInt(b.dataset.group, 10));
           b.style.background = '#1e293b';
@@ -497,6 +510,12 @@ class AppController {
     select.value = String(this.currentProblem.id);
     select.addEventListener('change', () => {
       location.search = `?p=${select.value}`;
+    });
+    // 뒤로·앞으로 가기로 돌아오면 브라우저가 이전 화면(진행한 단계·고른 과제)을 그대로 되살리므로
+    // 항상 새로 불러와 1~7단계를 처음 상태로 열고, 드롭다운은 지금 과제 번호로 맞춤
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) { location.reload(); return; }
+      select.value = String(this.currentProblem.id);
     });
   }
 

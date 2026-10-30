@@ -17,3 +17,6 @@ desktop.ini
 
 # 배포 빌드 결과
 dist/
+
+# 홍보 영상 (배포 제외)
+promo/

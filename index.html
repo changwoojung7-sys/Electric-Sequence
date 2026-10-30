@@ -21,7 +21,7 @@
       <!-- 문제 선택 드롭다운 -->
       <div class="problem-selector-wrapper">
         <label for="problem-select" class="select-label">과제 선택:</label>
-        <select id="problem-select" class="problem-select">
+        <select id="problem-select" class="problem-select" autocomplete="off">
           <option value="1" selected>공개문제 01번 (급배수 - 자동 FLS·X ➜ MC1 / 수동 T ➜ MC2, 트립 FR 경보)</option>
           <option value="2">공개문제 02번 (급배수 교대 - FLS·X·T ➜ FR ➜ MC1 ⇄ MC2)</option>
           <option value="3">공개문제 03번 (급수 교대 - FLS 또는 T ➜ X ➜ FR ➜ MC1 ⇄ MC2)</option>
@@ -218,6 +218,10 @@
           <span>6.</span> MC ➜ TB2, TB3 모터
         </button>
         
+        <button id="btn-stage2-continuity" class="btn btn-success" style="background: linear-gradient(135deg, #16a34a, #15803d); border: 1px solid #4ade80;" title="결선 후 벨 테스터로 구간별 도통 확인 (TB1➜MCCB➜EOCR, 퓨즈 상단, EOCR➜MC1·MC2, MC➜TB2·TB3, 접지)">
+          <span>🔔</span> 주회로 도통 테스트
+        </button>
+
         <!-- 상별 필터 버튼 그룹 -->
         <div class="phase-filter-group" style="display: inline-flex; gap: 4px; background: rgba(15,23,42,0.6); padding: 3px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
           <span style="font-size: 11px; color: #94a3b8; align-self: center; padding: 0 4px; font-weight: bold;">상별 필터:</span>
@@ -246,6 +250,9 @@
         </button>
         <button id="btn-stage3-write-pins" class="btn btn-accent">
           <span>✍️</span> 핀번호 전체 쓰기
+        </button>
+        <button id="btn-stage3-reset" class="btn btn-secondary" title="핀번호·그루핑·공통 표시를 모두 지우고 빈 도면에서 직접 연습">
+          <span>🔄</span> 초기화 (연습 모드)
         </button>
         <button id="btn-stage3-ref-internal" class="btn btn-secondary">
           <span>📖</span> 기구 내부결선도 보기

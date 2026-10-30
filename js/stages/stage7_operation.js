@@ -15,6 +15,14 @@ const DIAGRAM_VIEW = [60, 210, 1640, 690];
 const WALL_VIEW = [0, 0, 1800, 1650];
 // 벽면에서 배전반(400×420) 왼쪽 위 좌표 (5단계 BOX_LEFT·BOX_TOP)
 const WALL_PANEL = [700, 590];
+// 벽면 보기에서 기구(컨트롤박스·리밋스위치·전동기)를 눌렀을 때 확대 배율 — 한 번 더 누르면 원래 크기
+const WALL_BOX_ZOOM = 2;
+// 확대/원래 크기 전환 돋보기 표시
+const zoomBadge = (x, y, zoomed) => `
+  <g transform="translate(${x}, ${y})" class="op-zoom-badge">
+    <circle r="10" fill="${zoomed ? '#f59e0b' : '#0ea5e9'}" stroke="#ffffff" stroke-width="1.5" />
+    <text y="4" text-anchor="middle" font-size="11" font-weight="900" fill="#ffffff">${zoomed ? '－' : '＋'}</text>
+  </g>`;
 const TICK_MS = 100;
 
 // 1번 과제 기본 조작 박스 (문제 데이터 board.wall.boxes가 있으면 그 값을 사용)
@@ -32,6 +40,7 @@ export class Stage7Operation {
     this.op = problemData.board.operation;
     this.groupPaths = problemData.board.sequenceCircuit.groupPaths;
     this.boxes = problemData.board.wall?.boxes || DEFAULT_BOXES;
+    this.wallZoom = new Set();   // 벽면 보기에서 확대한 기구 (box:이름 / ls:입력 / motor:TB)
     this.seqImage = problemData.assets?.sequence || 'assets/images/sequence_diagram.png';
     this.speed = 1.0;
     this.runToken = 0;
@@ -742,7 +751,7 @@ export class Stage7Operation {
       }, { passive: false });
       let drag = null;
       svg.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0 || e.target.closest('[data-wall-input], [data-switch]')) return;   // 벽면 버튼·셀렉터·리밋스위치는 조작
+        if (e.button !== 0 || e.target.closest('[data-wall-input], [data-switch], [data-wall-zoom]')) return;   // 벽면 버튼·셀렉터·리밋스위치는 조작, 기구는 확대
         drag = { client: [e.clientX, e.clientY], view: { ...this.diagramView } };
         svg.setPointerCapture(e.pointerId);
         svg.classList.add('dragging');
@@ -966,19 +975,37 @@ export class Stage7Operation {
       const hits = devs.map((d, i) => (d?.input
         ? `<circle cx="45" cy="${i === 0 ? 40 : 100}" r="24" fill="transparent" class="op-clickable" data-wall-input="${d.input}" />`
         : '')).join('');
-      return `<g transform="translate(${b.x}, ${b.y})">${boxCover(b, devs.map(d => this.deviceState(d || {})))}${hits}</g>`;
+      // 박스를 누르면 중심(45, 70) 기준 2배 확대 ↔ 원래 크기 (버튼·셀렉터 자리는 조작)
+      const key = `box:${b.name}`;
+      const z = this.wallZoom.has(key);
+      return `<g transform="translate(${b.x + 45}, ${b.y + 70}) scale(${z ? WALL_BOX_ZOOM : 1}) translate(-45, -70)" class="op-clickable ${z ? 'op-wall-zoomed' : ''}" data-wall-zoom="${key}">${boxCover(b, devs.map(d => this.deviceState(d || {})))}${hits}${zoomBadge(86, 4, z)}</g>`;
     }).join('');
-    const motors = this.wallMotors.map(m => `
-      <g transform="translate(${m.x}, ${m.y})" class="op-wall-motor ${C[m.coil] ? 'on' : ''}">
+    const motors = this.wallMotors.map(m => {
+      const key = `motor:${m.id}`;
+      const z = this.wallZoom.has(key);
+      return `
+      <g transform="translate(${m.x}, ${m.y}) scale(${z ? WALL_BOX_ZOOM : 1})" class="op-clickable op-wall-motor ${C[m.coil] ? 'on' : ''} ${z ? 'op-wall-zoomed' : ''}" data-wall-zoom="${key}">
+        <circle r="46" fill="transparent" />
         <g transform="scale(1.3)">${this.motorSvg()}</g>
         <text y="-44" text-anchor="middle" font-size="16" font-weight="900" fill="${C[m.coil] ? '#4ade80' : '#e2e8f0'}">${m.motor} ${C[m.coil] ? '운전 중' : '정지'}</text>
         <text y="56" text-anchor="middle" font-size="12" font-weight="900" fill="#cbd5e1">${m.id} · ${m.coil}</text>
-      </g>`).join('');
+        ${zoomBadge(36, -34, z)}
+      </g>`;
+    }).join('');
+    // 리밋스위치: 몸체를 누르면 감지 ON/OFF, 돋보기(＋)를 누르면 확대 ↔ 원래 크기
+    const switches = (this.wallSwitches || []).map(sw => {
+      const key = `ls:${sw.input}`;
+      const z = this.wallZoom.has(key);
+      return `<g transform="translate(${sw.x}, ${sw.y}) scale(${z ? WALL_BOX_ZOOM : 1}) translate(${-sw.x}, ${-sw.y})" class="${z ? 'op-wall-zoomed' : ''}" data-wall-zoom="${key}">
+        ${this.limitSwitchMarkup(sw)}<g class="op-clickable">${zoomBadge(sw.x + 46, sw.y - 40, z)}</g></g>`;
+    }).join('');
     // 제어판 소켓에 꽂힌 테스트용 기구 (배전반은 벽면 BOX_LEFT·BOX_TOP 위치에 1:1)
     const devices = `<g transform="translate(${WALL_PANEL[0]}, ${WALL_PANEL[1]})">${this.problem.board.components
       .filter(c => c.type === 'socket_12p' || c.type === 'socket_8p')
       .map(c => this.testDeviceMarkup(c)).join('')}</g>`;
-    live.innerHTML = devices + boxes + motors + (this.wallSwitches || []).map(sw => this.limitSwitchMarkup(sw)).join('');
+    // 확대한 기구가 다른 기구 위에 보이게 맨 뒤에 그림
+    live.innerHTML = devices + boxes + motors + switches;
+    live.querySelectorAll('.op-wall-zoomed').forEach(el => live.appendChild(el));
   }
 
   /** 벽면 리밋스위치: 몸체 + 레버·롤러 (감지 ON이면 레버가 눌려 내려가고 초록 빛) — 눌러서 ON/OFF */
@@ -1061,8 +1088,19 @@ export class Stage7Operation {
         : '🔄 셀렉터 <b>수동(M)</b> ➜ PB0 ➜ PB1로 직접 운전 (FLS 전원 끊김)');
       this.tick();
     };
-    $('.op-boxes').addEventListener('click', selectorClick);
-    $('#op-wall-svg').addEventListener('click', selectorClick);
+    // 운전 중에는 화면이 자주 다시 그려져 click이 사라지므로 누르는 순간(pointerdown)에 전환
+    $('.op-boxes').addEventListener('pointerdown', (e) => { if (e.button === 0) selectorClick(e); });
+    $('#op-wall-svg').addEventListener('pointerdown', (e) => { if (e.button === 0) selectorClick(e); });
+
+    // 벽면 기구(컨트롤박스·리밋스위치·전동기)를 누르면 2배 확대 ↔ 원래 크기 (버튼·셀렉터·리밋스위치 몸체는 조작)
+    $('#op-wall-svg').addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || e.target.closest('[data-wall-input], [data-switch]')) return;
+      const el = e.target.closest('[data-wall-zoom]');
+      if (!el) return;
+      const key = el.dataset.wallZoom;
+      if (this.wallZoom.has(key)) this.wallZoom.delete(key); else this.wallZoom.add(key);
+      this.renderWallLive();
+    });
 
     // 리밋스위치: 조작 칸 버튼 · 시퀀스 도면의 LS 접점 · 벽면 TB4 옆 리밋스위치 어디서든 누르면 감지 ON/OFF
     // (도면은 타이머 진행 중 자주 다시 그려지므로 click 대신 pointerdown으로 받음)

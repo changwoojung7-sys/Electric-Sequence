@@ -22,6 +22,8 @@ export class Stage4Auxiliary {
     this.showDirections = true;
     this.wiringCache = null; // 색상·차선 보정이 끝난 배선 데이터 캐시
     this.runToken = 0;       // 진행 중인 배선 애니메이션 취소용 토큰
+    this.pendingTest = null; // 배선만 하고 아직 벨 테스트를 안 한 그룹 (그룹마다 벨 테스트 필수)
+    this.testedGroups = new Set();   // 벨 테스트 통과한 그룹
 
     // 배선 통로 기본 Y 좌표 (mm)
     this.CHANNELS = {
@@ -1313,7 +1315,51 @@ export class Stage4Auxiliary {
     }
 
     if (token !== this.runToken) return;
-    this.updateGuideMessage(`✅ <b>[4단계 ${groupData.name}] 결선 완료!</b><br>${groupData.tip}`);
+    if (!isAnimated) return;   // 화면 밖 즉시 완성(5단계 준비용)은 벨 테스트 단계 없음
+    // 그룹 하나를 배선할 때마다 벨 테스트 필수
+    this.testedGroups.delete(groupNum);
+    this.markTested(groupNum, false);
+    this.pendingTest = groupNum;
+    this.setBellRequired(true);
+    this.updateGuideMessage(`✅ <b>[4단계 ${groupData.name}] 결선 완료!</b><br>${groupData.tip}<br>🔔 <b style="color:#4ade80;">이제 반드시 '벨 테스터' 버튼을 눌러</b> 이 그룹이 끊김 없이 이어졌는지 확인하세요! (확인해야 다음 그룹으로 넘어갈 수 있어요)`);
+  }
+
+  /** 벨 테스터 버튼 깜빡임 (그룹 배선 후 벨 테스트를 해야 할 때) */
+  setBellRequired(on) {
+    document.getElementById('btn-stage4-tester')?.classList.toggle('bell-required', on);
+  }
+
+  /** 벨 테스트 통과한 그룹 칩에 ✔ 표시 */
+  markTested(groupNum, ok) {
+    const chip = groupNum === 0
+      ? document.getElementById('btn-stage4-fls')
+      : document.querySelector(`.stage4-group-chip[data-group="${groupNum}"]`);
+    chip?.classList.toggle('bell-tested', ok);
+  }
+
+  /**
+   * 다른 그룹으로 넘어가기 전 벨 테스트 확인 — 안 했으면 막고 안내 (true = 넘어가도 됨)
+   */
+  checkBellBeforeNext(nextGroup) {
+    if (this.pendingTest === null || this.pendingTest === nextGroup || this.isPlaying) return true;
+    const name = this.getWiringData().find(g => g.group === this.pendingTest)?.name || '';
+    const btn = document.getElementById('btn-stage4-tester');
+    btn?.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(0)' }], { duration: 300, iterations: 2 });
+    this.updateGuideMessage(`🔔 <b>잠깐! 벨 테스트를 먼저 하세요.</b><br><b>${name}</b> 배선을 마쳤으면 <b>'🔔 벨 테스터'</b> 버튼을 눌러 도통(삐-)을 확인한 뒤 다음 그룹으로 넘어가요.<br>💡 실제 시험에서도 그룹 하나를 배선할 때마다 바로 벨 테스터로 확인하면 틀린 곳을 쉽게 찾을 수 있어요!`);
+    return false;
+  }
+
+  /** 자동 시연: 벨 테스터 버튼을 누르는 장면 + 도통 시험 */
+  async pressBellTester(groupNum, token) {
+    const btn = document.getElementById('btn-stage4-tester');
+    if (btn) {
+      btn.classList.add('bell-pressing');
+      setTimeout(() => btn.classList.remove('bell-pressing'), 350);
+    }
+    await new Promise(r => setTimeout(r, 250 / this.speed));
+    if (token !== this.runToken) return;
+    await this.testContinuity(groupNum);
+    await new Promise(r => setTimeout(r, 1100 / this.speed));
   }
 
   /**
@@ -1330,7 +1376,10 @@ export class Stage4Auxiliary {
       // 번호 순서대로 한 그룹씩만 보여주며 배선
       await this.runGroup(groupData.group, true, token);
       if (token !== this.runToken) return; // 중간에 취소됨
-      await new Promise(r => setTimeout(r, 900 / this.speed));
+      await new Promise(r => setTimeout(r, 500 / this.speed));
+      if (token !== this.runToken) return;
+      // 그룹마다 벨 테스터 버튼을 눌러 도통 확인 (필수 단계)
+      await this.pressBellTester(groupData.group, token);
       if (token !== this.runToken) return;
     }
 
@@ -1466,7 +1515,13 @@ export class Stage4Auxiliary {
       ? `<br>⛔ <b style="color:#f87171;">1단자 2선 초과(실격)</b>: ${overloaded.map(t => `${t.name} ${t.count}선`).join(', ')}`
       : '';
 
+    if (isContinuous && !overloaded.length && targetGroup === this.pendingTest) {
+      this.pendingTest = null;
+      this.setBellRequired(false);
+    }
     if (isContinuous) {
+      this.testedGroups.add(targetGroup);
+      this.markTested(targetGroup, true);
       this.playBuzzerSound(0.5);
       this.updateGuideMessage(`🔔 <b>[벨 테스터 도통 시험 성공]</b> 삐-익! 🎵<br><b>${groupData.name}</b>의 모든 단자가 하나로 이어져 <b>0Ω(완전 도통)</b>입니다!${overloadHtml}`);
     } else {
@@ -1492,6 +1547,10 @@ export class Stage4Auxiliary {
     const testerLayer = document.getElementById('aux-tester-effect-layer');
     if (testerLayer) testerLayer.innerHTML = '';
     this.currentGroup = null;
+    this.pendingTest = null;
+    this.setBellRequired(false);
+    this.testedGroups.forEach(g => this.markTested(g, false));
+    this.testedGroups.clear();
   }
 
   /**

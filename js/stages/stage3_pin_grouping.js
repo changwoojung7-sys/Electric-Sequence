@@ -32,17 +32,18 @@ export function pinBadgeMarkup(p) {
       </g>
     `;
   } else if (p.orientation === 'vertical_exact') {
-    // [OpenCV 실측 기반] 상하단 단자 동그라미(o) 옆에 1:1 완벽 정렬
+    // [OpenCV 실측 기반] 상하단 단자 동그라미(o) 옆에 1:1 완벽 정렬 (리밋스위치 1-1 등 긴 번호는 뱃지를 넓게)
+    const bw = (t) => Math.max(28, String(t).length * 9 + 8);
     pinHtml = `
       <!-- 상단 핀번호 -->
       <g transform="translate(${p.topX}, ${p.topY})">
-        <rect x="0" y="0" width="28" height="22" rx="4" fill="#ffffff" stroke="#dc2626" stroke-width="2" />
-        <text x="14" y="16" font-size="14" fill="#dc2626" font-weight="900" font-family="'Pretendard', sans-serif" text-anchor="middle">${p.top}</text>
+        <rect x="0" y="0" width="${bw(p.top)}" height="22" rx="4" fill="#ffffff" stroke="#dc2626" stroke-width="2" />
+        <text x="${bw(p.top) / 2}" y="16" font-size="14" fill="#dc2626" font-weight="900" font-family="'Pretendard', sans-serif" text-anchor="middle">${p.top}</text>
       </g>
       <!-- 하단 핀번호 -->
       <g transform="translate(${p.botX}, ${p.botY})">
-        <rect x="0" y="0" width="28" height="22" rx="4" fill="#ffffff" stroke="#dc2626" stroke-width="2" />
-        <text x="14" y="16" font-size="14" fill="#dc2626" font-weight="900" font-family="'Pretendard', sans-serif" text-anchor="middle">${p.bot}</text>
+        <rect x="0" y="0" width="${bw(p.bot)}" height="22" rx="4" fill="#ffffff" stroke="#dc2626" stroke-width="2" />
+        <text x="${bw(p.bot) / 2}" y="16" font-size="14" fill="#dc2626" font-weight="900" font-family="'Pretendard', sans-serif" text-anchor="middle">${p.bot}</text>
       </g>
     `;
   } else if (p.orientation === 'fls_coil_exact') {
@@ -238,7 +239,10 @@ export class Stage3PinGrouping {
     `;
 
     this.bindEvents();
-    this.renderPinBadges(false);
+    // 처음에는 빈 도면 (핀번호·공통 표시 없이) — 직접 매겨 본 뒤 '핀번호 전체 쓰기'·시연으로 확인
+    const commonLayer = document.getElementById('seq-common-layer');
+    if (commonLayer) commonLayer.style.display = 'none';
+    this.isPinsRevealed = false;
   }
 
   bindEvents() {
@@ -334,6 +338,8 @@ export class Stage3PinGrouping {
     const pinsLayer = document.getElementById('seq-pins-layer');
     if (!pinsLayer) return;
     pinsLayer.innerHTML = '';
+    const commonLayer = document.getElementById('seq-common-layer');
+    if (commonLayer) commonLayer.style.display = '';   // 연습 모드에서 숨긴 공통 표시도 다시
 
     const { pinPlacements } = this.problem.board.sequenceCircuit;
 
@@ -501,6 +507,35 @@ export class Stage3PinGrouping {
   /**
    * 3단계 전체 자동 시연 (모든 핀 번호 작성 후 그루핑 순회)
    */
+  /**
+   * 초기화 (핀번호 매기기 연습 모드): 진행 중 시연을 멈추고 핀번호·그루핑·공통 표시를 모두 지움
+   * ➜ 빈 도면을 보고 직접 핀번호·그룹 번호를 매겨 본 뒤 '핀번호 전체 쓰기'·시연으로 정답 확인
+   */
+  reset() {
+    this.runToken++;
+    this.currentGroup = null;
+    this.isPinsRevealed = false;
+    this.showAllGroups();   // 번호 칩 선택 표시 해제 (그룹 형광 표시는 아래에서 지움)
+    ['seq-pins-layer', 'seq-groups-layer'].forEach(id => {
+      const l = document.getElementById(id);
+      if (l) l.innerHTML = '';
+    });
+    const commonLayer = document.getElementById('seq-common-layer');
+    if (commonLayer) commonLayer.style.display = 'none';
+    const detailCard = document.getElementById('group-detail-card');
+    if (detailCard) {
+      detailCard.style.borderLeftColor = '#f59e0b';
+      detailCard.innerHTML = `
+        <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px; font-size: 14px;">✍️ 연습 모드 — 빈 도면</div>
+        <div style="color: #cbd5e1; font-size: 12.5px;">
+          ① 도면의 접점·코일마다 <b>핀번호</b>를 직접 적어 보세요. (기구 내부결선도 보기 📖 참고)<br>
+          ② 같은 전위끼리 묶어 <b>왼쪽 열부터 ①, ②, ③…</b> 그룹 번호를 매겨 보세요. (이 과제는 <b>${this.problem.board.sequenceCircuit.groups.length}개</b>)<br>
+          ③ 다 했으면 <b>✍️ 핀번호 전체 쓰기</b>와 위 번호 칩(또는 ▶ 전체 시연)으로 정답을 확인!
+        </div>`;
+    }
+    this.updateGuideMessage(`🔄 <b>[3단계 초기화 — 연습 모드]</b><br>핀번호·그루핑·공통 표시를 모두 지웠어요. 종이나 문제지에 <b>핀번호와 그룹 번호(①~${this.circled(this.problem.board.sequenceCircuit.groups.length)})</b>를 직접 매겨 본 뒤,<br><b>✍️ 핀번호 전체 쓰기</b>로 맞춰 보세요!`);
+  }
+
   async playAll() {
     // 다시 누르면 이전 시연은 취소되고 처음부터 새로 시작
     const token = ++this.runToken;
