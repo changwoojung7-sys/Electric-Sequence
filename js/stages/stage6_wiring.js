@@ -351,29 +351,9 @@ export class Stage6Wiring {
     return { p: pts[n - 1], dir: [0, 0] };
   }
 
-  /** 전선 묶음을 감는 절연 테이프 (여러 가닥의 같은 지점을 가로질러 감쌈) */
-  tapeMarkup(points, dir, label = '') {
-    const vertical = Math.abs(dir[1]) > Math.abs(dir[0]);
-    const xs = points.map(p => p[0]);
-    const ys = points.map(p => p[1]);
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    const across = (vertical ? Math.max(...xs) - Math.min(...xs) : Math.max(...ys) - Math.min(...ys)) + 5;
-    const along = 7;
-    const w = vertical ? across : along;
-    const h = vertical ? along : across;
-    return `
-      <g class="s6-tape" transform="translate(${cx.toFixed(1)}, ${cy.toFixed(1)})">
-        <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="1.5" fill="#0f172a" stroke="#64748b" stroke-width="0.8" />
-        <path d="${vertical ? `M ${-w / 2} -1.2 L ${w / 2} -1.2 M ${-w / 2} 1.2 L ${w / 2} 1.2` : `M -1.2 ${-h / 2} L -1.2 ${h / 2} M 1.2 ${-h / 2} L 1.2 ${h / 2}`}" stroke="#334155" stroke-width="0.6" />
-        ${label ? `<text x="${vertical ? w / 2 + 4 : 0}" y="${vertical ? 3 : -h / 2 - 4}" text-anchor="${vertical ? 'start' : 'middle'}" font-size="8" font-weight="900" fill="#f8fafc">${label}</text>` : ''}
-      </g>`;
-  }
-
-  /** 정션 경유 다발(PB·SS) 입선: 제어함에서 3가닥씩 테이핑 ➜ 6가닥 한 묶음 ➜ J박스까지 ➜ 3가닥씩 분리 */
+  /** 정션 경유 다발(PB·SS) 입선: 제어함에서 전선 끝을 3가닥씩 테이핑 ➜ 6가닥 한 묶음 ➜ J박스까지 ➜ 3가닥씩 분리 (테이핑은 전선 끝이라 배관 위에는 그리지 않음) */
   async pullJunctionGroup(group, isAnimated, token, stepNo, total) {
     const wireLayer = this.layer('wires-layer');
-    const tapeLayer = this.layer('badges-layer');
     const toolLayer = this.s5.layer('tool-layer');
     const all = group.flatMap(b => this.wires.filter(w => w.bundle === b));
     const names = group.map(b => b.id).join('·');
@@ -399,21 +379,13 @@ export class Stage6Wiring {
       await this.focusBox(entry[0] - 150, entry[1] - 120, entry[0] + 60, entry[1] + 50, 80, 460);   // 🎥 제어함 입구(테이핑 위치)
       if (!this.alive(token)) return;
     }
-    say(`① 제어함에서 <b>${ids.map(n => `${n} 3가닥`).join(', ')}을 각각 테이핑</b>합니다.`);
-    group.forEach(b => {
-      const ws = this.wires.filter(w => w.bundle === b);
-      const at = ws.map(w => this.pointAlong(w.pts, w.entryIdx, 16));
-      const [el] = this.appendSvg(tapeLayer, this.tapeMarkup(at.map(a => a.p), at[0].dir));
-      if (isAnimated) this.popIn(el, 200);
-    });
-    await callout(tapeCallout[0], tapeCallout[1], `✋ ${ids.map(n => `${n} 3가닥`).join(' · ')} 각각 테이핑`, 900);
+    // 테이핑은 배관이 아니라 넣을 전선의 '끝'을 묶는 것 ➜ 배관 위에는 띠를 그리지 않고 안내로만
+    say(`① 제어함에서 넣을 <b>전선 끝을 ${ids.map(n => `${n} 3가닥`).join(', ')}씩 각각 테이핑</b>합니다. (전선 끝을 가지런히 모아 절연 테이프로 감아요 — 배관이 아니라 전선 끝!)`);
+    await callout(tapeCallout[0], tapeCallout[1], `✋ 전선 끝 ${ids.map(n => `${n} 3가닥`).join(' · ')} 각각 테이핑`, 900);
     if (!this.alive(token)) return;
 
-    say(`② 두 묶음을 다시 <b>하나(${all.length}가닥)로 테이핑</b>해서 한 번에 넣습니다.`);
-    const at6 = all.map(w => this.pointAlong(w.pts, w.entryIdx, 40));
-    const [big] = this.appendSvg(tapeLayer, this.tapeMarkup(at6.map(a => a.p), at6[0].dir));
-    if (isAnimated) this.popIn(big, 200);
-    await callout(tapeCallout[0], tapeCallout[1], `✋ ${all.length}가닥 한 묶음으로 다시 테이핑`, 900);
+    say(`② 두 묶음의 <b>전선 끝을 다시 하나(${all.length}가닥)로 테이핑</b>해서 한 번에 넣습니다.`);
+    await callout(tapeCallout[0], tapeCallout[1], `✋ 전선 끝 ${all.length}가닥 한 묶음으로 다시 테이핑`, 900);
     if (!this.alive(token)) return;
 
     // ③ 가까운 곳 ➜ 먼 곳: 제어함에서 J박스까지 6가닥 한 묶음으로 밀어 넣기
@@ -439,11 +411,8 @@ export class Stage6Wiring {
     for (const b of group) {
       const ws = this.wires.filter(w => w.bundle === b);
       const els = ws.map(w => this.appendSvg(wireLayer, this.wireMarkup(w, { range: [w.splitIdx, w.pts.length - 1] }))[0]);
-      const at = ws.map(w => this.pointAlong(w.pts, w.splitIdx, 48));
-      const [tape] = this.appendSvg(tapeLayer, this.tapeMarkup(at.map(a => a.p), at[0].dir));
       if (isAnimated) {
         await Promise.all(els.map(el => Promise.all([...el.querySelectorAll('path')].map(p => this.drawStroke(p, 70)))));
-        this.popIn(tape, 200);
         if (!this.alive(token)) return;
         await this.sleep(150);
       }
@@ -613,6 +582,7 @@ export class Stage6Wiring {
       if (spec) {
         els.push(...this.appendSvg(this.layer('terminals-layer'), this.boxTerminalsMarkup(spec)));
         els.push(...this.appendSvg(this.layer('terminals-layer'), this.boxJumperMarkup(spec)));
+        if (this.isPushButtonBox(spec)) els.push(...this.appendSvg(this.layer('terminals-layer'), this.pbContactTagsMarkup(spec)));
       }
       const [badge] = this.appendSvg(badges, `
         <g class="s6-badge" transform="translate(${box.x + 45}, ${box.y - 14})">
@@ -623,9 +593,16 @@ export class Stage6Wiring {
       if (isAnimated) {
         await this.focusBox(box.x - 60, box.y - 40, box.x + 150, box.y + 170, 60, 420);   // 🎥 박스 안이 보이게
         if (!this.alive(token)) return;
-        if (spec) this.updateGuideMessage(spec.jumper ? `🔧 <b>[6단계-1: 가조립] ${box.name}</b><br>박스 안에서 먼저 <b>${spec.jumper.text}</b> — 공통선(공통 연결점)만 미리 이어 둡니다.` : `🔧 <b>[6단계-1: 가조립] ${box.name}</b><br>기구가 하나뿐이라 공통선 없이 바로 가조립합니다.`);
+        if (spec) {
+          const pbs = this.isPushButtonBox(spec) ? spec.contacts.filter(c => !c.vertical) : [];
+          const pbText = pbs.length
+            ? `<br>🔴🟢 ${pbs.map(c => `<b>${c.label.split(' ')[0]}</b> = <b style="color:${c.type === 'NC' ? '#fca5a5' : '#86efac'};">${c.type} 접점</b>(${c.type === 'NC' ? 'b접점·빨강 정지' : 'a접점·녹색 기동'})`).join(' · ')}`
+              + (spec.jumper ? `<br>➜ <b>PB1(녹색) NO 한쪽 단자</b>와 <b>PB0(빨강) NC 한쪽 단자</b>를 점퍼로 이어 <b>공통 연결점</b>을 만들어요. (나머지 단자에 나중에 PB0선·PB1선)` : '')
+            : '';
+          this.updateGuideMessage(spec.jumper ? `🔧 <b>[6단계-1: 가조립] ${box.name}</b><br>박스 안에서 먼저 <b>${spec.jumper.text}</b> — 공통선(공통 연결점)만 미리 이어 둡니다.${pbText}` : `🔧 <b>[6단계-1: 가조립] ${box.name}</b><br>기구가 하나뿐이라 공통선 없이 바로 가조립합니다.${pbText}`);
+        }
         for (const el of els) this.popIn(el, 220);
-        await this.sleep(600);
+        await this.sleep(this.isPushButtonBox(spec) ? 1500 : 600);
         if (!this.alive(token)) return;
       }
     }
@@ -758,6 +735,47 @@ export class Stage6Wiring {
         </g>
         ${label ? `<text x="${labelSide * 9}" y="3" text-anchor="${labelSide > 0 ? 'start' : 'end'}" font-size="8" font-weight="900" fill="#f8fafc">${label}</text>` : ''}
       </g>`;
+  }
+
+  /** 푸시버튼 박스인지 (가로 NO/NC 접점이 있는 박스) */
+  isPushButtonBox(spec) {
+    return !!spec?.contacts?.some(c => !c.vertical && (c.type === 'NO' || c.type === 'NC'));
+  }
+
+  /**
+   * 푸시버튼 박스 NC/NO 꼬리표 (박스 바깥, 분필 이름 반대쪽)
+   * - PB0 = NC(b접점, 빨강·정지) / PB1·PB2 = NO(a접점, 녹색·기동), 점퍼 양 끝은 "공통"
+   */
+  pbContactTagsMarkup(spec) {
+    if (!this.isPushButtonBox(spec)) return '';
+    const [ox, oy] = spec.origin;
+    const inner = ox + 45 < 900;   // 배전반 쪽(분필 이름 반대쪽)에 꼬리표
+    const tx = inner ? ox + 96 : ox - 6;
+    let out = '<g class="s6-pb-tags" font-weight="900">';
+    spec.contacts.filter(c => !c.vertical).forEach(c => {
+      const nc = c.type === 'NC';
+      const name = c.label.split(' ')[0];
+      const text = `${name} = ${c.type} (${nc ? 'b접점' : 'a접점'})`;
+      const w = text.length * 6.6 + 14;
+      const y = oy + c.y - 6;
+      const x0 = inner ? tx : tx - w;
+      out += `<g>
+        <rect x="${x0}" y="${y - 10}" width="${w}" height="20" rx="10" fill="${nc ? '#7f1d1d' : '#14532d'}" stroke="${nc ? '#fca5a5' : '#86efac'}" stroke-width="1.5" />
+        <text x="${x0 + w / 2}" y="${y + 4}" text-anchor="middle" font-size="11" fill="#ffffff">${text}</text>
+      </g>`;
+    });
+    if (spec.jumper) {
+      [spec.jumper.from, spec.jumper.to].forEach(t => {
+        const [x, y] = this.boxPoint(spec, spec.terms[t]);
+        out += `<g transform="translate(${x - 13}, ${y - 9})"><rect x="-13" y="-7" width="26" height="13" rx="6.5" fill="#16a34a" stroke="#ffffff" stroke-width="1" /><text y="3" text-anchor="middle" font-size="7.5" fill="#ffffff">공통</text></g>`;
+      });
+    }
+    return out + '</g>';
+  }
+
+  /** 결선할 단자가 NC/NO 중 어느 접점인지 (푸시버튼 박스) */
+  pbContactOf(spec, term) {
+    return spec?.contacts?.find(c => !c.vertical && (c.a === term || c.b === term));
   }
 
   /** 박스 로컬 좌표 ➜ 벽면 좌표 */
@@ -940,6 +958,7 @@ export class Stage6Wiring {
       if (spec) {
         const [terms] = this.appendSvg(termLayer, this.boxTerminalsMarkup(spec));
         const [jumper] = this.appendSvg(termLayer, this.boxJumperMarkup(spec));
+        if (this.isPushButtonBox(spec)) this.appendSvg(termLayer, this.pbContactTagsMarkup(spec));   // PB0 = NC · PB1 = NO 꼬리표
         if (isAnimated) {
           say(`③ ${spec.jumper ? `가조립 때 미리 이어 둔 <b>${spec.jumper.text}</b>(공통 연결점)에 <b>공통선</b>을 먼저 결선합니다.` : '기구가 하나라 공통선 없이 두 단자에 차례로 결선합니다.'}${bundle.id === 'PB' ? '<br>💡 PB1(녹색)은 <b>NO</b>, PB0(빨강)은 <b>NC</b> 접점에 결선!' : ''}${bundle.id === 'SS' ? '<br>💡 SS 접점 4개: <b>M = 끊어진 상태</b>, <b>A = 연결된 상태</b>' : ''}`);
           this.popIn(terms, 200);
@@ -968,12 +987,24 @@ export class Stage6Wiring {
         const [b] = this.appendSvg(termLayer, this.terminalMarkup(devicePoint[0], devicePoint[1], num, w.pinInfo.common,
           bundle.device?.type === 'box' ? '' : w.pinInfo.label, labelSide));
         if (isAnimated) {
+          // 푸시버튼 박스: PB0선은 NC 단자, PB1(PB2)선은 NO 단자에 결속 — 단자에 고리·꼬리표로 강조
+          const pc = spec && !w.pinInfo.common ? this.pbContactOf(spec, spec.wires[w.pinInfo.label]?.term) : null;
           const where = spec
-            ? `${bundle.name} <b>${w.pinInfo.common ? '내부 연결점' : `${w.pinInfo.label} 단자`}</b>`
+            ? `${bundle.name} <b>${w.pinInfo.common ? '내부 연결점' : (pc ? `${pc.type} 단자` : `${w.pinInfo.label} 단자`)}</b>`
             : (bundle.via.length ? `${bundle.name} ${w.pinInfo.label}` : 'TB1 케이블 심선');
-          say(`③ 확인한 선 결선 — ${num}번째 <b>${w.pinInfo.label}</b> ${w.pinInfo.common ? '(공통선/접지 먼저!)' : '(단독선)'} ➜ ${where}`);
+          say(`③ 확인한 선 결선 — ${num}번째 <b>${w.pinInfo.label}</b> ${w.pinInfo.common ? '(공통선/접지 먼저!)' : '(단독선)'} ➜ ${where}${pc ? `<br>${pc.type === 'NC' ? '🔴' : '🟢'} <b>${w.pinInfo.label}</b>선은 <b style="color:${pc.type === 'NC' ? '#fca5a5' : '#86efac'};">${pc.type} 단자</b>(${pc.type === 'NC' ? 'b접점 — 평소 붙어 있다가 누르면 떨어짐' : 'a접점 — 평소 떨어져 있다가 누르면 붙음'})에 결속!` : ''}`);
           this.popIn(b, 200);
-          await this.sleep(260);
+          let mark = null;
+          if (pc) {
+            const color = pc.type === 'NC' ? '#ef4444' : '#22c55e';
+            [mark] = this.appendSvg(this.s5.layer('tool-layer'), `
+              <g transform="translate(${devicePoint[0]}, ${devicePoint[1]})">
+                <circle r="9" fill="none" stroke="${color}" stroke-width="3" class="s6-term-ring" />
+                <g transform="translate(0, -22)"><rect x="-24" y="-9" width="48" height="17" rx="8.5" fill="${color}" stroke="#ffffff" stroke-width="1.2" /><text y="3.5" text-anchor="middle" font-size="10" font-weight="900" fill="#ffffff">${pc.type} 단자</text></g>
+              </g>`);
+          }
+          await this.sleep(pc ? 1100 : 260);
+          if (mark) mark.remove();
         }
       }
     }
@@ -1120,6 +1151,7 @@ export class Stage6Wiring {
     this.currentStep = 4;
     const coverLayer = this.layer('covers-layer');
     coverLayer.innerHTML = '';
+    this.layer('terminals-layer').querySelectorAll('.s6-pb-tags').forEach(el => el.remove());   // 뚜껑을 덮으면 NC/NO 꼬리표 정리
 
     this.updateGuideMessage("📦 <b>[6단계-4: 박스 뚜껑 결합]</b><br>2구 박스 4개에 뚜껑을 덮고 <b>네 모서리 나사</b>를 조입니다.<br>💡 <b>J박스(8각 박스)는 시험에서 뚜껑이 없어서</b> 말아 넣은 선이 보이는 그대로 둡니다.");
     if (isAnimated) await this.sleep(500);
@@ -1146,7 +1178,164 @@ export class Stage6Wiring {
     // 가조립 뱃지 정리
     this.layer('badges-layer').querySelectorAll('.s6-badge').forEach(el => el.remove());
 
-    this.updateGuideMessage("🎉 <b>[6단계 입선·결선 완료!]</b><br>외부단자 가조립 ➜ <b>먼 쪽부터 입선</b> ➜ <b>공통선 먼저 결선</b> ➜ 박스 뚜껑 결합까지 끝났습니다!<br>이제 <b>7단계: 전원 투입 & 동작 테스트</b>에서 회로를 확인할 차례입니다.");
+    this.updateGuideMessage("🎉 <b>[6단계 입선·결선 완료!]</b><br>외부단자 가조립 ➜ <b>먼 쪽부터 입선</b> ➜ <b>공통선 먼저 결선</b> ➜ 박스 뚜껑 결합까지 끝났습니다!<br>🔔 다음은 <b>5. 최종 도통 테스트(필수)</b> — MCCB ON 상태에서 TB1 인입선 갈·회 ➜ 퓨즈 2차까지 확인합니다.");
+  }
+
+  // ---------------------------------------------------------------------------
+  // [5] 최종 도통 테스트 (필수): 뚜껑까지 결합한 뒤 MCCB ON ➜ TB1 인입선 갈·회 ➜ 퓨즈 2차
+  //     퓨즈가 제대로 끼워졌는지 + 보조회로(퓨즈 2차)까지 전원이 가는 길이 이어졌는지 확인
+  // ---------------------------------------------------------------------------
+
+  /** 벨 테스터 "삐-" */
+  playBeep(duration = 0.35) {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      if (ctx.state === 'suspended') ctx.resume();
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, t);
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.setValueAtTime(0.06, t + duration - 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + duration);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  /** 갈(L1)·회(L3) 각각: 인출선 끝 ➜ TB1 ➜ 케이블 ➜ TB5 ➜ MCCB ➜ EOCR ➜ 퓨즈 1차 ➜ (퓨즈) ➜ 퓨즈 2차 */
+  finalTestPaths() {
+    const [ox, oy] = [this.s5.WALL.BOX_LEFT, this.s5.WALL.BOX_TOP];   // 배전반은 벽면 위 1:1
+    const B = (p) => [p[0] + ox, p[1] + oy];
+    const wires = this.problem.board.mainCircuit.steps.flatMap(s => s.wires);
+    const spec = this.problem.board.externalLeads?.TB1;
+    if (!spec) return [];
+    const n = spec.wires.length;
+    return spec.wires.map((lw, k) => {
+      const phase = lw.wire;
+      const find = (fc, tc) => wires.find(w => w.phase === phase && w.from.comp === fc && w.to.comp === tc);
+      const w1 = find('TB5', 'MCCB');
+      const w2 = find('MCCB', 'EOCR');
+      const w3 = find('EOCR', 'F');
+      if (!w1 || !w2 || !w3) return null;
+      const outPin = w3.to.pin.replace('in', 'out');
+      const fin = B(w3.points[w3.points.length - 1]);
+      const tp = this.terminalPos?.('F', outPin);
+      const fout = tp ? B(tp) : [fin[0], fin[1] + 60];
+      const lead = this.leadGeometry('TB1', k, n, lw).pts;
+      const cable = this.wires.find(w => w.bundle.pullSkip && w.pinInfo.label === phase);
+      return {
+        label: lw.label, phase, color: phase === 'L1' ? '갈' : (phase === 'L3' ? '회' : phase),
+        leadEnd: lead[lead.length - 1], fuseOut: fout, fuseName: `퓨즈 2차 ${outPin.endsWith('1') ? '①' : '②'}`,
+        lines: [lead, cable ? cable.testPts : [], w1.points.map(B), w2.points.map(B), w3.points.map(B)],
+        bridges: [[B(w1.points[w1.points.length - 1]), B(w2.points[0])], [fin, fout]]   // MCCB 안(1차↔2차) · 퓨즈 안(1차↔2차)
+      };
+    }).filter(Boolean);
+  }
+
+  async runStep5(isAnimated = true, token = null) {
+    token = this.beginRun(token);
+    if (this.currentStep < 4) await this.runStep4(false, token);
+    this.currentStep = 5;
+    const layer = this.layer('badges-layer');
+    layer.querySelectorAll('.s6-final').forEach(el => el.remove());
+    const paths = this.finalTestPaths();
+    if (!paths.length) return;
+    const [ox, oy] = [this.s5.WALL.BOX_LEFT, this.s5.WALL.BOX_TOP];
+    const comp = (id) => this.problem.board.components.find(c => c.id === id);
+    const mccb = comp('MCCB');
+    const fuse = comp('F');
+    const say = (html) => { if (isAnimated) this.updateGuideMessage(`🔔 <b>[6단계-5: 최종 도통 테스트 (필수)]</b><br>${html}`); };
+    const wait = async (ms) => { if (isAnimated) await this.sleep(ms); return this.alive(token); };
+    const pathD = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    // 벨 테스터 리드봉: 빨강(+)은 TB1 인출선 끝, 검정(−)은 퓨즈 2차 — 어두운 배전반에서도 보이게 흰 테두리 + 이름표
+    const probe = (p, color, left) => {
+      const red = color !== '#111827';
+      const [hx, hy] = [left ? -15 : 15, -29];
+      const label = red ? '🔴 빨강 리드(+)' : '⚫ 검정 리드(−)';
+      const w = 84;
+      const lx = left ? hx - 10 - w : hx + 10;
+      return `
+      <g transform="translate(${p[0]}, ${p[1]})">
+        <circle r="7" fill="none" stroke="#ffffff" stroke-width="5" />
+        <circle r="7" fill="none" stroke="${color}" stroke-width="2.5" />
+        <line x1="0" y1="-7" x2="${left ? -14 : 14}" y2="-26" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" />
+        <line x1="0" y1="-7" x2="${left ? -14 : 14}" y2="-26" stroke="${color}" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="${hx}" cy="${hy}" r="6" fill="${color}" stroke="#ffffff" stroke-width="2" />
+        <g transform="translate(${lx}, ${hy - 9})">
+          <rect width="${w}" height="18" rx="9" fill="${red ? '#b91c1c' : '#111827'}" stroke="#ffffff" stroke-width="1.5" />
+          <text x="${w / 2}" y="12.5" text-anchor="middle" font-size="10" font-weight="900" fill="#ffffff">${label}</text>
+        </g>
+      </g>`;
+    };
+    const tag = (x, y, text, fill, stroke = '#0f172a') => `
+      <g transform="translate(${x}, ${y})">
+        <rect x="${-(text.length * 6 + 14) / 2}" y="-11" width="${text.length * 6 + 14}" height="20" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.2" />
+        <text y="4" text-anchor="middle" font-size="11" font-weight="900" fill="#ffffff">${text}</text>
+      </g>`;
+    const add = (markup, cls = '') => this.appendSvg(layer, `<g class="s6-final ${cls}">${markup}</g>`)[0];
+    const mccbAt = mccb ? [mccb.x + ox, mccb.y + oy - mccb.height / 2 - 12] : null;
+    const fuseAt = fuse ? [fuse.x + ox, fuse.y + oy - fuse.height / 2 - 12] : null;
+
+    if (isAnimated) {
+      const xs = paths.flatMap(p => [p.leadEnd[0], p.fuseOut[0]]);
+      const ys = paths.flatMap(p => [p.leadEnd[1], p.fuseOut[1]]);
+      await this.focusBox(Math.min(...xs) - 120, Math.min(...ys) - 60, Math.max(...xs) + 160, Math.max(...ys) + 60, 30, 460);
+      if (!this.alive(token)) return;
+    }
+    say(`박스 뚜껑까지 결합하고 TB1 인입선 <b>갈·회</b>를 빼 둔 상태에서, 전원을 넣기 전에 <b>반드시</b> 확인합니다.<br>
+      ✔ <b>퓨즈가 제대로 끼워졌는지</b> ✔ <b>보조회로(퓨즈 2차)까지 전원 길이 이어졌는지</b><br>
+      방법: <b>MCCB ON</b> ➜ 빨간 리드 = TB1 인출선 <b>갈(L1)·회(L3) 끝</b>, 검정 리드 = 배전반 <b>퓨즈 2차</b> ➜ "삐-"`);
+    if (!await wait(1800)) return;
+
+    // ① 퓨즈 결합 상태 확인
+    if (fuseAt) {
+      add(tag(fuseAt[0], fuseAt[1], '🔌 퓨즈 2개 끼움 확인', '#2563eb'), 'fuse');
+      say('① <b>퓨즈 홀더에 유리관 퓨즈 2개</b>가 끝까지 딸깍 끼워졌는지 눈으로 확인합니다. (빠져 있거나 끊어지면 보조회로에 전원이 안 가요)');
+      if (!await wait(1500)) return;
+    }
+
+    // ② MCCB OFF로 찍어 보기 ➜ 소리 없음 (MCCB에서 끊김)
+    const first = paths[0];
+    let off = null;
+    if (mccbAt && isAnimated) {
+      off = add(tag(mccbAt[0], mccbAt[1], 'MCCB OFF', '#475569'));
+      const pr = add(probe(first.leadEnd, '#ef4444', true) + probe(first.fuseOut, '#111827', false));
+      say(`② 먼저 <b>MCCB OFF</b> 상태로 ${first.color}(${first.label}) 끝 ➜ ${first.fuseName}를 찍어 보면… <b style="color:#f87171;">소리 없음</b>. MCCB에서 끊겨 있기 때문이에요.`);
+      if (!await wait(1700)) return;
+      pr.remove();
+    }
+    if (off) off.remove();
+    if (mccbAt) add(tag(mccbAt[0], mccbAt[1], 'MCCB ON', '#16a34a'), 'mccb');
+    say('③ <b>MCCB 레버를 ON</b>으로 올립니다. 이제 TB1 ➜ MCCB ➜ EOCR ➜ 퓨즈까지 한 길로 이어져요.');
+    if (!await wait(1200)) return;
+
+    // ③·④ 갈·회 ➜ 퓨즈 2차 도통
+    let k = 4;
+    const marks = [];
+    for (const p of paths) {
+      const glow = p.lines.filter(l => l.length > 1).map(l => `<path d="${pathD(l)}" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" style="filter: drop-shadow(0 0 4px #38bdf8)" />`).join('')
+        + p.bridges.map(([a, b]) => `<path d="M ${a[0]} ${a[1]} L ${b[0]} ${b[1]}" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="4 3" opacity="0.9" />`).join('');
+      const g = add(glow + probe(p.leadEnd, '#ef4444', true) + probe(p.fuseOut, '#111827', false));
+      marks.forEach(m => layer.appendChild(m));   // 앞에서 확인한 ✔는 계속 맨 위에
+      if (isAnimated) this.playBeep(0.4);
+      // ✔는 "삐-" 소리가 나는 순간 바로, 리드봉에 가리지 않게 단자 아래쪽에 (다음 상 테스트 때도 보이게 맨 위 레이어로 유지)
+      const check = (q) => `<g transform="translate(${q[0]}, ${q[1] + 16})"><circle r="7" fill="#16a34a" stroke="#ffffff" stroke-width="1.2" /><text y="4" text-anchor="middle" font-size="10" font-weight="900" fill="#ffffff">✔</text></g>`;
+      marks.push(add(check(p.fuseOut) + check(p.leadEnd), 'mark'));
+      say(`${k === 4 ? '④' : '⑤'} <b>${p.color}(${p.label})</b> 인출선 끝 ➜ TB1 ➜ MCCB ➜ EOCR ➜ 퓨즈 ➜ <b>${p.fuseName}</b> : <b style="color:#4ade80;">삐- 도통 ✔</b>`);
+      k++;
+      if (!await wait(1700)) return;
+      g.remove();
+    }
+    if (isAnimated) {
+      this.updateGuideMessage(`✅ <b>[6단계-5: 최종 도통 테스트 완료]</b><br>MCCB ON 상태에서 TB1 인입선 <b>${paths.map(p => `${p.color}(${p.label})`).join('·')}</b> ➜ 퓨즈 2차 모두 <b>삐-</b>! 퓨즈가 제대로 끼워졌고, <b>보조회로까지 전원이 가는 길</b>이 확인되었습니다.<br>🎉 이제 <b>7단계: 전원 투입 & 동작 테스트</b>로 진행하세요!`);
+      await this.sleep(400);
+    }
   }
 
   async playAll() {
@@ -1154,7 +1343,7 @@ export class Stage6Wiring {
     this.clearAll();
     this.isPlaying = true;
     const token = this.runToken;
-    for (const step of [this.runStep1, this.runStep2, this.runStep3, this.runStep4]) {
+    for (const step of [this.runStep1, this.runStep2, this.runStep3, this.runStep4, this.runStep5]) {
       await step.call(this, true, token);
       if (!this.alive(token)) return;
     }

@@ -343,6 +343,15 @@ flowchart LR
 ### 4단계 그룹마다 벨 테스트 필수
 - `runGroup`(애니메이션) 끝 ➜ `pendingTest` 설정·벨 테스터 버튼 깜빡임(`bell-required`) ➜ `testContinuity` 통과 시 해제·칩 ✔(`bell-tested`). 통과 전 다른 그룹은 `checkBellBeforeNext`가 막음. 자동 시연은 `pressBellTester`로 그룹마다 버튼 누르는 장면.
 
+### 6단계 5. 최종 도통 테스트 (필수)
+- `btn-stage6-step5` ➜ `Stage6.runStep5()` (playAll 포함): 퓨즈 끼움 확인 ➜ MCCB OFF 시 소리 없음 ➜ MCCB ON ➜ TB1 인출선 갈·회 끝 ➜ 퓨즈 2차 도통. 경로는 `finalTestPaths()`(인출선·케이블 심선·주회로 데이터 + MCCB·퓨즈 내부). 퓨즈 2차 좌표는 app이 넘긴 `terminalPos`(4단계 `getTerminalPos`). 표시 `.s6-final`은 7단계 벽면에서 숨김.
+
+### 6단계 PB 박스 NC·NO
+- 가조립·결선 때 `pbContactTagsMarkup`(PB1=NO·PB0=NC 꼬리표 + 점퍼 공통 표시), 결선 때 `pbContactOf`로 단자의 NC/NO를 찾아 고리·꼬리표 강조. 뚜껑 결합 때 `.s6-pb-tags` 정리.
+
+### 6단계 정션 입선 테이핑
+- 테이핑은 넣을 전선의 끝을 묶는 것 ➜ 배관 위에 띠를 그리지 않고 안내·말풍선으로만 (`tapeMarkup` 제거).
+
 ### 6단계 여유선 · J박스 (사용자 확정)
 - 입선 때 기구 쪽 끝을 여유 있게 빼 두고(`addSlackTails`, `s6-slack-layer`) 결선 단계에서 길이에 맞춰 절단.
 - J박스 경유 다발: J박스에서 양쪽 약 15cm 여유 고리(`junctionSlackMarkup('out')`) ➜ 결선 후 J박스 안에 둥글게 말아 넣기(`coilJunctionSlack`, 'coil'). J박스는 시험에서 뚜껑 없음 ➜ 4. 뚜껑 결합에서 제외.
@@ -352,6 +361,11 @@ flowchart LR
 - `btn-stage3-reset` ➜ `Stage3.reset()`: 시연 중단, 핀번호·그루핑·공통 표시 숨김, 연습 안내 카드. '핀번호 전체 쓰기'가 공통 표시도 다시 보이게 함.
 
 ## 10. 7단계: 전원 투입 & 동작 테스트
+- **도면 부하 효과** (`#op-load-layer`): 램프 = 색 채움(multiply) + 빛 줄기·번짐(`op-lamp-rays`·`op-lamp-halo`), 흰색 램프는 하늘색 흰빛 + 흰 고리 + 남색 테두리(YL 노랑과 구분) / 부저 = 소리 물결(`op-buzz-waves`) / 코일 = 주황 채움 + 테두리.
+- **전체 테스트 속도**: 단계 시작 전 `STEP_LEAD_MS`(0.8초), 단계 사이 `STEP_GAP_MS`(1.6초) — 단, 타이머·플리커가 돌고 있으면(`timeRunning()`) 멈추지 않음(판정이 틀어지지 않게). 단계 안 조작·타이머 대기는 그대로.
+- **도면 접점 표시**: 닫힌 접점 = 단자 사이 가상선(`op-c-bridge`, 전기가 흐르면 `flow` 점선) + 강조 ON(`op-c-glow`), 열린 접점 = 작은 회색 점, 상태가 바뀐 순간 고리(`op-c-flash`, `contactFlash`). 가로 접점은 EOCR b와 같은 높이(맨 위 모선)로 판별.
+- 벽면·제어판 보기의 배전반 MCCB: `renderWallLive`가 레버(전원 상태)를 덮어 그림, `[data-wall-power]` 누르면 `setPower` 전환.
+- 벽면 탭을 처음 열면 컨트롤박스·리밋스위치는 기본 확대(`wallZoomInit`). 리밋스위치 배율 `WALL_LS_ZOOM`(1.7, 아래 기준), 간격 190mm, 옆 자리가 없으면 위아래로 쌓음.
 - **벽면 보기 기구 확대** (`WALL_BOX_ZOOM`, `wallZoom`): 컨트롤박스·리밋스위치·전동기를 누르면 2배 ↔ 원래 크기(돋보기 ＋/－). 버튼·셀렉터·리밋스위치 몸체는 조작. 셀렉터는 pointerdown(운전 중 다시 그리기에도 안 끊김). 5단계 분필 이름(`.s5-name-marks`)은 7단계 벽면에서 숨김.
 
 - 엔진: `js/stages/stage7_operation.js` — 회로는 과제 데이터의 `board.operation`(접점·부하 목록)만으로 계산 → 다른 과제는 데이터만 추가.

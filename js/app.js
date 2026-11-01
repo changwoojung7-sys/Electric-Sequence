@@ -728,6 +728,11 @@ class AppController {
     document.getElementById('btn-stage6-step4')?.addEventListener('click', () => {
       this.present('s6-4', () => this.stage6Engine?.runStep4(true));
     });
+
+    // 필수 최종 점검: MCCB ON ➜ TB1 인입선 갈·회 ➜ 퓨즈 2차 도통 (퓨즈 결합·보조회로 전원)
+    document.getElementById('btn-stage6-step5')?.addEventListener('click', () => {
+      this.present('s6-5', () => this.stage6Engine?.runStep5(true));
+    });
     // 입선 초기화 (5단계 배관은 그대로)
     document.getElementById('btn-stage6-clear')?.addEventListener('click', () => {
       this.stage6Engine?.clearAll();
@@ -751,6 +756,7 @@ class AppController {
     if (!this.stage5Engine) return null;
     if (this.stage5Engine.currentStep < 7) await this.stage5Engine.runStep7(false);
     if (!this.stage6Engine) this.stage6Engine = new Stage6Wiring(this.stage5Engine, this.currentProblem);
+    this.stage6Engine.terminalPos = (c, p) => this.stage4Engine?.getTerminalPos(c, p);   // 배전반 단자 위치 (퓨즈 2차 등)
     if (this.stage6Engine.currentStep < 4) await this.stage6Engine.runStep4(false);
     return this.stage5Engine;
   }
@@ -1125,6 +1131,7 @@ class AppController {
         }
         if (!this.stage6Engine) {
           this.stage6Engine = new Stage6Wiring(this.stage5Engine, this.currentProblem);
+          this.stage6Engine.terminalPos = (c, p) => this.stage4Engine?.getTerminalPos(c, p);
           const activeSpeed = document.querySelector('.speed-btn.active');
           if (activeSpeed) this.stage6Engine.setSpeed(parseFloat(activeSpeed.dataset.speed || '1.0'));
         }

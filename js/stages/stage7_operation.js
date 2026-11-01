@@ -17,6 +17,7 @@ const WALL_VIEW = [0, 0, 1800, 1650];
 const WALL_PANEL = [700, 590];
 // 벽면 보기에서 기구(컨트롤박스·리밋스위치·전동기)를 눌렀을 때 확대 배율 — 한 번 더 누르면 원래 크기
 const WALL_BOX_ZOOM = 2;
+const WALL_LS_ZOOM = 1.7;   // 리밋스위치 확대 (벽면 아래쪽이라 위로 커지게)
 // 확대/원래 크기 전환 돋보기 표시
 const zoomBadge = (x, y, zoomed) => `
   <g transform="translate(${x}, ${y})" class="op-zoom-badge">
@@ -24,6 +25,9 @@ const zoomBadge = (x, y, zoomed) => `
     <text y="4" text-anchor="middle" font-size="11" font-weight="900" fill="#ffffff">${zoomed ? '－' : '＋'}</text>
   </g>`;
 const TICK_MS = 100;
+// 동작 사항 테스트 진행 속도: 단계 시작 전 제목 보여 주기 · 단계 사이 결과 보여 주기 (단계 안 타이밍은 그대로)
+const STEP_LEAD_MS = 800;
+const STEP_GAP_MS = 1600;
 
 // 1번 과제 기본 조작 박스 (문제 데이터 board.wall.boxes가 있으면 그 값을 사용)
 const DEFAULT_BOXES = [
@@ -592,12 +596,32 @@ export class Stage7Operation {
         ? [`<path d="${this.groupPaths[this.op.neutral]}" class="op-return" />`] : []),
       ...[...this.energized].filter(n => this.groupPaths[n]).map(n => `<path d="${this.groupPaths[n]}" class="op-flow" />`)
     ].join('');
+    const now = performance.now();
+    this.contactPrev = this.contactPrev || {};
+    this.contactFlash = this.contactFlash || {};
+    const topBusY = this.op.contacts.find(x => x.id === 'EOCR_b')?.y;
     this.container.querySelector('#op-contact-layer').innerHTML = this.op.contacts.map(c => {
       const closed = this.contactClosed(c);
+      // 여자·탈여자로 접점이 바뀐 순간 기록 ➜ 0.7초 동안 "딸깍" 고리 효과 (다시 그려져도 이어서 재생)
+      if (this.contactPrev[c.id] !== undefined && this.contactPrev[c.id] !== closed) this.contactFlash[c.id] = { t: now, closed };
+      this.contactPrev[c.id] = closed;
+      const fl = this.contactFlash[c.id];
+      const flash = fl && now - fl.t < 700
+        ? `<circle cx="${c.x}" cy="${c.y}" r="14" class="op-c-flash ${fl.closed ? 'on' : 'off'}" style="animation-delay:${-(now - fl.t)}ms" />` : '';
+      // 닫힌 접점: 두 단자 사이를 초록 가상선으로 이어 줌 (전기가 실제로 지나가면 흐르는 점선)
+      // 세로 접점은 위·아래 단자(중심 ±19), 맨 위 모선의 가로 접점(EOCR b·PB0 등)은 왼쪽·오른쪽 단자
+      const horiz = topBusY !== undefined && Math.abs(c.y - topBusY) < 6;
+      const [ax, ay, bx, by] = horiz ? [c.x - 20, c.y, c.x + 20, c.y] : [c.x, c.y - 19, c.x, c.y + 19];
+      const flowing = closed && I.power && this.energized.has(c.from) && this.energized.has(c.to);
+      const bridge = closed
+        ? `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" class="op-c-bridge" /><line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" class="op-c-bridge-core ${flowing ? 'flow' : ''}" />`
+        : '';
       // 표시 위치: 세로 접점은 위쪽 단자 바로 위 전선 위(양옆은 기호 글자 자리라 피함 — 이웃 접점이 가까워도 안 가림),
       // 맨 위 가로 EOCR b접점은 선 아래 / 데이터에 badge: [dx, dy]가 있으면 그 값
       const [dx, dy] = c.badge || (c.id === 'EOCR_b' ? [0, 18] : [0, -31]);
-      const badge = `<g transform="translate(${c.x + dx}, ${c.y + dy})"><circle r="8" class="${closed ? 'op-c-closed' : 'op-c-open'}" /><text y="3" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff">${closed ? 'ON' : ''}</text></g>`;
+      const badge = `${flash}${bridge}<g transform="translate(${c.x + dx}, ${c.y + dy})">${closed
+        ? '<circle r="13" class="op-c-glow" /><circle r="10.5" class="op-c-closed" /><text y="3.8" text-anchor="middle" font-size="10" font-weight="900" fill="#fff">ON</text>'
+        : '<circle r="6" class="op-c-open" />'}</g>`;
       // 리밋스위치 접점: 도면의 접점 기호를 직접 눌러 감지 ON/OFF (깜빡이는 고리 = 누를 수 있음)
       const sw = (this.op.switches || []).find(s => s.input === c.input);
       if (!sw) return badge;
@@ -609,9 +633,41 @@ export class Stage7Operation {
     }).join('');
     this.container.querySelector('#op-load-layer').innerHTML = this.op.loads.map(l => {
       if (!C[l.id]) return '';
-      const color = l.kind === 'lamp' ? { red: '#ef4444', green: '#22c55e', yellow: '#facc15', white: '#e2e8f0' }[l.color] : (l.kind === 'buzzer' ? '#fb923c' : '#f97316');
       const extra = l.kind === 'timer' && !this.timerDone[l.id] ? `<text x="0" y="-30" text-anchor="middle" font-size="18" font-weight="900" fill="#b45309">⏱ ${Math.max(0, this.timerSet - (performance.now() - this.timerStart[l.id]) / 1000).toFixed(1)}s</text>` : '';
-      return `<g transform="translate(${l.x}, ${l.y})"><circle r="24" fill="${color}" opacity="0.28" /><circle r="24" fill="none" stroke="${color}" stroke-width="5" class="op-load-on" />${extra}</g>`;
+      // 채움은 곱하기 합성(multiply) ➜ 기호 안 글자(WL·RL…)는 그대로 보이고 바탕만 색이 듦
+      if (l.kind === 'lamp') {
+        // 흰색 램프는 흰 도면에서 안 보이고 노란 램프와도 구분해야 하므로 ➜ 차갑고 밝은 흰빛(하늘색 빛 줄기·번짐) + 진한 남색 테두리
+        const LAMP = {
+          red: { fill: '#f87171', ray: '#ef4444', ring: '#b91c1c' },
+          green: { fill: '#4ade80', ray: '#16a34a', ring: '#15803d' },
+          yellow: { fill: '#fde047', ray: '#eab308', ring: '#a16207' },
+          white: { fill: '#e0f2fe', ray: '#0ea5e9', ring: '#1e3a8a', core: '#ffffff' }
+        }[l.color] || { fill: '#fde047', ray: '#eab308', ring: '#a16207' };
+        const rays = Array.from({ length: 8 }, (_, k) => {
+          const a = (k * Math.PI) / 4;
+          const [c, s] = [Math.cos(a), Math.sin(a)];
+          return `<line x1="${(c * 30).toFixed(1)}" y1="${(s * 30).toFixed(1)}" x2="${(c * 42).toFixed(1)}" y2="${(s * 42).toFixed(1)}" />`;
+        }).join('');
+        return `<g transform="translate(${l.x}, ${l.y})" class="op-lamp-lit">
+          <circle r="40" fill="${LAMP.ray}" class="op-lamp-halo" />
+          <g stroke="${LAMP.ray}" stroke-width="4.5" stroke-linecap="round" class="op-lamp-rays">${rays}</g>
+          <circle r="22" fill="${LAMP.fill}" style="mix-blend-mode: multiply" />
+          ${LAMP.core ? `<circle r="24" fill="none" stroke="#ffffff" stroke-width="7" opacity="0.9" />` : ''}
+          <circle r="24" fill="none" stroke="${LAMP.ring}" stroke-width="3.5" />
+          ${LAMP.core ? `<circle r="28.5" fill="none" stroke="${LAMP.ray}" stroke-width="2" />` : ''}
+        </g>`;
+      }
+      if (l.kind === 'buzzer') {
+        // 부저: 양옆으로 퍼지는 소리 물결
+        const waves = [32, 40, 48].map((r, k) => `<path d="M ${r * 0.7} ${-r * 0.7} A ${r} ${r} 0 0 1 ${r * 0.7} ${r * 0.7}" style="animation-delay:${k * 0.18}s" /><path d="M ${-r * 0.7} ${-r * 0.7} A ${r} ${r} 0 0 0 ${-r * 0.7} ${r * 0.7}" style="animation-delay:${k * 0.18}s" />`).join('');
+        return `<g transform="translate(${l.x}, ${l.y})">
+          <circle r="22" fill="#fdba74" style="mix-blend-mode: multiply" />
+          <circle r="24" fill="none" stroke="#ea580c" stroke-width="4" class="op-load-on" />
+          <g fill="none" stroke="#ea580c" stroke-width="3.5" stroke-linecap="round" class="op-buzz-waves">${waves}</g>
+        </g>`;
+      }
+      // 릴레이·타이머·전자접촉기 코일: 주황 채움 + 테두리
+      return `<g transform="translate(${l.x}, ${l.y})"><circle r="22" fill="#fdba74" style="mix-blend-mode: multiply" /><circle r="24" fill="none" stroke="#f97316" stroke-width="5" class="op-load-on" />${extra}</g>`;
     }).join('');
     }
 
@@ -751,7 +807,7 @@ export class Stage7Operation {
       }, { passive: false });
       let drag = null;
       svg.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0 || e.target.closest('[data-wall-input], [data-switch], [data-wall-zoom]')) return;   // 벽면 버튼·셀렉터·리밋스위치는 조작, 기구는 확대
+        if (e.button !== 0 || e.target.closest('[data-wall-input], [data-switch], [data-wall-zoom], [data-wall-power]')) return;   // 벽면 버튼·셀렉터·리밋스위치·MCCB는 조작, 기구는 확대
         drag = { client: [e.clientX, e.clientY], view: { ...this.diagramView } };
         svg.setPointerCapture(e.pointerId);
         svg.classList.add('dragging');
@@ -857,13 +913,26 @@ export class Stage7Operation {
       this.wallSwitches = this.op.switches.map((sw, i) => {
         // 가로 단자대: 단자 번호 방향으로 나란히 / 세로 단자대(15번 등): 인출선 바깥쪽으로 나란히
         const mid = g.outerSlot(1.5);
+        // 간격은 확대(1.7배)해도 서로 겹치지 않게 넉넉히
+        // 세로 단자대가 벽 끝 가까이라 옆으로 나란히 둘 자리가 없으면 위아래로 쌓음 (15번 등)
+        const n = this.op.switches.length;
+        const sideEnd = last[0] + g.outward[0] * (160 + (n - 1) * 190);
+        const sideFits = sideEnd >= 90 && sideEnd <= WALL_VIEW[2] - 90;
         const [px, py] = g.vertical
-          ? [last[0] + g.outward[0] * (150 + i * 110), mid[1] + 20]
-          : [last[0] + g.along[0] * (120 + i * 120) + g.outward[0] * 30, last[1] + g.along[1] * (120 + i * 120) + g.outward[1] * 20];
-        const x = Math.min(WALL_VIEW[2] - 50, Math.max(50, px));
+          ? (sideFits
+            ? [last[0] + g.outward[0] * (160 + i * 190), mid[1] + 20]
+            : [last[0] + g.outward[0] * 160, mid[1] + 20 - i * 175])
+          : [last[0] + g.along[0] * (140 + i * 190) + g.outward[0] * 30, last[1] + g.along[1] * (140 + i * 190) + g.outward[1] * 20];
+        const x = Math.min(WALL_VIEW[2] - 90, Math.max(90, px));
         const y = Math.min(WALL_VIEW[3] - 45, Math.max(45, py));
         return { ...sw, x, y };
       });
+    }
+    // 처음 벽면을 열면 컨트롤박스 4개와 리밋스위치는 확대된 상태로 (눌러서 원래 크기로 줄일 수 있음)
+    if (!this.wallZoomInit) {
+      this.wallBoxes.forEach(b => this.wallZoom.add(`box:${b.name}`));
+      this.wallSwitches.forEach(sw => this.wallZoom.add(`ls:${sw.input}`));
+      this.wallZoomInit = true;
     }
     this.wallReady = true;
     return true;
@@ -996,15 +1065,32 @@ export class Stage7Operation {
     const switches = (this.wallSwitches || []).map(sw => {
       const key = `ls:${sw.input}`;
       const z = this.wallZoom.has(key);
-      return `<g transform="translate(${sw.x}, ${sw.y}) scale(${z ? WALL_BOX_ZOOM : 1}) translate(${-sw.x}, ${-sw.y})" class="${z ? 'op-wall-zoomed' : ''}" data-wall-zoom="${key}">
+      // 아래쪽(글자 아래)을 기준으로 위로 커지게 ➜ 벽면 아래 끝에서 잘리지 않음
+      const oy = sw.y + 48;
+      return `<g transform="translate(${sw.x}, ${oy}) scale(${z ? WALL_LS_ZOOM : 1}) translate(${-sw.x}, ${-oy})" class="${z ? 'op-wall-zoomed' : ''}" data-wall-zoom="${key}">
         ${this.limitSwitchMarkup(sw)}<g class="op-clickable">${zoomBadge(sw.x + 46, sw.y - 40, z)}</g></g>`;
     }).join('');
     // 제어판 소켓에 꽂힌 테스트용 기구 (배전반은 벽면 BOX_LEFT·BOX_TOP 위치에 1:1)
     const devices = `<g transform="translate(${WALL_PANEL[0]}, ${WALL_PANEL[1]})">${this.problem.board.components
       .filter(c => c.type === 'socket_12p' || c.type === 'socket_8p')
       .map(c => this.testDeviceMarkup(c)).join('')}</g>`;
+    // 배전반 MCCB: 레버가 지금 전원 상태(ON = 위 · OFF = 아래)를 따라 움직이고, 눌러서 ON/OFF
+    const mc = this.problem.board.components.find(c => c.type === 'mccb' || c.id === 'MCCB');
+    const mccb = mc ? (() => {
+      const [x, y] = [WALL_PANEL[0] + mc.x, WALL_PANEL[1] + mc.y];
+      const on = !!this.input.power;
+      return `<g class="op-clickable op-wall-mccb ${on ? 'on' : ''}" data-wall-power="1">
+        <rect x="${x - 15}" y="${y - 17}" width="30" height="34" rx="3" fill="transparent" />
+        <rect x="${x - 12}" y="${y - 14}" width="24" height="28" rx="2" fill="#111827" stroke="${on ? '#22c55e' : '#374151'}" stroke-width="${on ? 1.6 : 1}" />
+        <text x="${x}" y="${y - 7}" font-size="3.8" text-anchor="middle" font-weight="900" fill="${on ? '#f87171' : '#7f1d1d'}">ON</text>
+        <text x="${x}" y="${y + 11}" font-size="3.8" text-anchor="middle" font-weight="900" fill="${on ? '#14532d' : '#4ade80'}">OFF</text>
+        <rect x="${x - 2}" y="${y - 4}" width="4" height="8" rx="1" fill="#374151" />
+        <rect x="${x - 5.5}" y="${on ? y - 5.5 : y + 0.5}" width="11" height="7" rx="1.5" fill="#f1f5f9" stroke="${on ? '#16a34a' : '#475569'}" stroke-width="0.9" />
+        <text x="${x}" y="${y + 22}" font-size="4.2" text-anchor="middle" font-weight="900" fill="${on ? '#4ade80' : '#fde68a'}" paint-order="stroke" stroke="#0f172a" stroke-width="1.2">👆 ${on ? 'ON' : 'OFF'}</text>
+      </g>`;
+    })() : '';
     // 확대한 기구가 다른 기구 위에 보이게 맨 뒤에 그림
-    live.innerHTML = devices + boxes + motors + switches;
+    live.innerHTML = devices + mccb + boxes + motors + switches;
     live.querySelectorAll('.op-wall-zoomed').forEach(el => live.appendChild(el));
   }
 
@@ -1039,6 +1125,12 @@ export class Stage7Operation {
     });
 
     $('#op-mccb').addEventListener('click', () => {
+      userAct();
+      this.setPower(!this.input.power);
+    });
+    // 벽면·제어판 보기의 배전반 MCCB 레버를 직접 눌러 ON/OFF (운전 중 다시 그리기에도 끊기지 않게 pointerdown)
+    $('#op-wall-svg').addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || !e.target.closest('[data-wall-power]')) return;
       userAct();
       this.setPower(!this.input.power);
     });
@@ -1235,6 +1327,10 @@ export class Stage7Operation {
 
     this.setStepState(i, 'running');
     this.logEvent(`📋 <b>${st.title}</b> 테스트 시작`);
+    // 어떤 동작 사항을 테스트하는지 먼저 보여 준 뒤 조작 시작
+    // (타이머·플리커가 돌고 있으면 멈추는 동안 상태가 바뀌므로 바로 진행)
+    if (!this.timeRunning()) await wait(STEP_LEAD_MS);
+    if (!alive()) return false;
 
     for (const a of st.actions) {
       if (!alive()) return false;
@@ -1376,6 +1472,11 @@ export class Stage7Operation {
     return ok;
   }
 
+  /** 시간에 따라 바뀌는 것이 돌고 있는지 (타이머 진행 중 · 플리커 동작 중) */
+  timeRunning() {
+    return this.timerIds.some(id => this.coil[id] && !this.timerDone[id]) || !!this.coil.FR;
+  }
+
   /** 아직 통과하지 않은 첫 단계부터 하나 실행 */
   async runNextStep() {
     const steps = this.op.steps || [];
@@ -1396,7 +1497,9 @@ export class Stage7Operation {
     for (let i = 0; i < this.op.steps.length; i++) {
       if (token !== this.runToken) return;
       await this.runStep(i, token);
-      await new Promise(r => setTimeout(r, 400));
+      // 결과(✅)와 램프·전동기 상태를 볼 수 있게 다음 단계 전 잠시 멈춤
+      // (타이머·플리커가 돌고 있으면 그사이 상태가 바뀌어 다음 단계 판정이 틀어지므로 짧게)
+      await new Promise(r => setTimeout(r, this.timeRunning() ? 400 : STEP_GAP_MS));
     }
   }
 

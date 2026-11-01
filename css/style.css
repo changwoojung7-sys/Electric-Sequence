@@ -818,11 +818,39 @@ body.focus-mode .focus-guide {
   to { stroke-dashoffset: -28; }
 }
 
-.op-c-closed { fill: #16a34a; stroke: #ffffff; stroke-width: 2; }
-.op-c-open { fill: #94a3b8; stroke: #ffffff; stroke-width: 2; opacity: 0.85; }
+.op-c-closed { fill: #16a34a; stroke: #ffffff; stroke-width: 2.5; }
+.op-c-open { fill: #94a3b8; stroke: #ffffff; stroke-width: 1.5; opacity: 0.8; }
+/* ON 표시 강조: 은은하게 퍼지는 초록 빛 */
+.op-c-glow { fill: #22c55e; opacity: 0.35; animation: op-c-glow 1.4s ease-in-out infinite; }
+@keyframes op-c-glow { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.6; } }
+/* 닫힌 접점: 두 단자 사이를 잇는 가상선 (바깥 빛 + 안쪽 심) */
+.op-c-bridge { stroke: #4ade80; stroke-width: 9; stroke-linecap: round; opacity: 0.45; }
+.op-c-bridge-core { stroke: #16a34a; stroke-width: 4; stroke-linecap: round; }
+.op-c-bridge-core.flow { stroke: #fef08a; stroke-dasharray: 5 4; animation: op-c-flow 0.6s linear infinite; }
+@keyframes op-c-flow { to { stroke-dashoffset: -9; } }
+/* 여자·탈여자 순간 "딸깍": 접점에서 퍼지는 고리 (닫힘 초록 · 열림 빨강) */
+.op-c-flash { fill: none; stroke-width: 4; transform-box: fill-box; transform-origin: center; animation: op-c-flash 0.7s ease-out forwards; }
+.op-c-flash.on { stroke: #22c55e; }
+.op-c-flash.off { stroke: #ef4444; }
+@keyframes op-c-flash { from { transform: scale(0.6); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .op-c-glow, .op-c-bridge-core.flow, .op-c-flash { animation: none; }
+}
 
 .op-load-on {
   animation: op-pulse 1s ease-in-out infinite;
+}
+
+/* 7단계 도면: 램프 점등 — 빛 번짐 + 빛 줄기 (흰색 램프도 잘 보이게) */
+.op-lamp-halo { opacity: 0.22; animation: op-lamp-halo 1.2s ease-in-out infinite; }
+@keyframes op-lamp-halo { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.38; } }
+.op-lamp-rays { animation: op-lamp-rays 1.2s ease-in-out infinite; }
+@keyframes op-lamp-rays { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+/* 부저: 소리 물결이 차례로 퍼짐 */
+.op-buzz-waves path { opacity: 0; animation: op-buzz-wave 0.9s ease-out infinite; }
+@keyframes op-buzz-wave { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .op-lamp-halo, .op-lamp-rays, .op-buzz-waves path { animation: none; opacity: 0.8; }
 }
 
 @keyframes op-pulse {
@@ -2124,3 +2152,14 @@ body.focus-mode .parts-strip {
   color: #4ade80;
   font-weight: 900;
 }
+
+/* 6단계 최종 도통 테스트 표시는 7단계 벽면 보기에서는 숨김 */
+#op-wall-base .s6-final {
+  display: none;
+}
+
+/* 6단계: 푸시버튼 박스 결선 단자 강조 고리 (NC 빨강 · NO 초록) */
+.s6-term-ring { transform-box: fill-box; transform-origin: center; animation: s6-term-ring 0.8s ease-in-out infinite; }
+@keyframes s6-term-ring { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.6; } }
+/* 박스 뚜껑을 덮은 뒤(7단계 벽면)에는 NC/NO 꼬리표 숨김 */
+#op-wall-base .s6-pb-tags { display: none; }
