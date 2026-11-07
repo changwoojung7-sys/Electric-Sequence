@@ -2617,3 +2617,277 @@ body.focus-mode .parts-strip {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ==========================================================================
+   3단계 시퀀스 회로 연습 모드 — 캡처 프로그램 스타일 필기 도구 바 (Stage 3 Draw Toolbar)
+   ========================================================================== */
+.s3-draw-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 12px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.s3-draw-toolbar.s3-toolbar-flash {
+  animation: s3-toolbar-pulse 0.85s ease-out 2;
+}
+
+@keyframes s3-toolbar-pulse {
+  0%, 100% {
+    border-color: rgba(56, 189, 248, 0.45);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    border-color: #facc15;
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.65);
+  }
+}
+
+.s3-tool-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.s3-toolbar-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.s3-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #334155;
+  margin: 0 2px;
+}
+
+.s3-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.s3-tool-btn:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.s3-tool-btn.active {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.45);
+}
+
+/* 색상 스와치 */
+.s3-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.s3-color-swatch:hover {
+  transform: scale(1.12);
+}
+
+.s3-color-swatch.active {
+  border-color: #ffffff;
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+.s3-custom-color-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px dashed #64748b;
+  background: #0f172a;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.s3-custom-color-wrap input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* 굵기 프리셋 및 슬라이더 */
+.s3-size-presets {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.s3-size-chip {
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.s3-size-chip:hover {
+  color: #ffffff;
+  background: #334155;
+}
+
+.s3-size-chip.active {
+  background: #334155;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.s3-size-slider {
+  width: 84px;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.s3-size-preview-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 54px;
+}
+
+.s3-size-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.s3-size-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #e2e8f0;
+  font-family: monospace;
+}
+
+/* 우측 액션 버튼 */
+.s3-action-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.s3-action-btn:hover:not(:disabled) {
+  background: #334155;
+}
+
+.s3-action-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.s3-action-btn.off {
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.s3-action-btn.s3-btn-danger {
+  color: #fca5a5;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.s3-action-btn.s3-btn-danger:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.15);
+}
+
+.s3-compare-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1.5px solid #4ade80;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.s3-compare-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.s3-compare-btn.active {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  border-color: #fde047;
+}
+
+/* 도면 위 커서 모양 */
+.s3-drawable-svg.tool-pen,
+.s3-drawable-svg.tool-highlighter {
+  cursor: crosshair;
+}
+
+.s3-drawable-svg.tool-text {
+  cursor: text;
+}
+
+.s3-drawable-svg.tool-eraser {
+  cursor: cell;
+}
+
+/* 플로팅 텍스트 입력창 */
+.s3-floating-text-input {
+  position: absolute;
+  z-index: 20;
+  min-width: 110px;
+  padding: 4px 8px;
+  font-size: 15px;
+  font-weight: 900;
+  font-family: 'Pretendard', sans-serif;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #2563eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  outline: none;
+}
