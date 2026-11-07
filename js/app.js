@@ -31,6 +31,7 @@ import { Stage5PipingDraft } from './stages/stage5_piping_draft.js';
 import { Stage6Wiring } from './stages/stage6_wiring.js';
 import { Stage7Operation } from './stages/stage7_operation.js';
 import { Presenter } from './components/presenter.js';
+import { BatchPrinter } from './components/batch_printer.js';
 
 class AppController {
   constructor() {
@@ -560,7 +561,13 @@ class AppController {
 
     document.querySelectorAll('.doc-prev').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.gotoDocPage(this.docPage - 1); }));
     document.querySelectorAll('.doc-next').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.gotoDocPage(this.docPage + 1); }));
+    document.querySelectorAll('[data-doc-jump]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetPage = parseInt(b.dataset.docJump || '1', 10);
+      this.gotoDocPage(targetPage);
+    }));
     document.getElementById('btn-doc-toggle')?.addEventListener('click', () => this.setDocMode(!this.docMode));
+    this.batchPrinter = new BatchPrinter(() => this.currentProblem.id);
     window.addEventListener('keydown', (e) => {
       if (!this.docMode || e.target.closest('input, select, textarea')) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') this.gotoDocPage(this.docPage + 1);
@@ -622,6 +629,9 @@ class AppController {
   updateDocView() {
     const label = `${this.docPage} / ${this.docPages}`;
     document.querySelectorAll('.doc-page-label').forEach(el => { el.textContent = label; });
+    document.querySelectorAll('[data-doc-jump]').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.docJump || '0', 10) === this.docPage);
+    });
     const main = document.getElementById('doc-page-main');
     if (main) main.src = this.docPagePath();
     if (this.docMode) {
@@ -941,7 +951,7 @@ class AppController {
       if (headerTitle) headerTitle.textContent = `📄 공개문제 ${String(this.currentProblem.id).padStart(2, '0')}번 문제지 전체 보기`;
       if (headerDesc) headerDesc.textContent = '요구사항 · 수험자 유의사항 · 도면(배관/기구 배치, 제어판 배치, 시퀀스 회로, 동작 사항, 내부 결선도) 전체를 페이지 넘겨 확인';
       this.setDocMode(true);
-      this.updateGuideMessage?.('📄 <b>[0단계: 공개문제 보기]</b><br>작업 전에 문제지 전체를 먼저 읽어 보세요! <b>◀ ▶</b> 버튼이나 <b>← →</b> 키로 페이지를 넘길 수 있어요.<br>다른 단계에서도 왼쪽 <b>📄 문제지 전체</b> 버튼으로 언제든 다시 볼 수 있어요.');
+      this.updateGuideMessage?.('📄 <b>[0단계: 공개문제 보기]</b><br>작업 전에 문제지 전체를 먼저 읽어 보세요! <b>◀ ▶</b> 버튼이나 <b>← →</b> 키, 또는 도면 바로가기 버튼(5~9쪽)으로 이동할 수 있어요.<br>🖨️ <b>특정 페이지 일괄 출력</b> 버튼을 누르면 1~18번 과제에서 원하는 도면(예: 5·6·7쪽 핵심 도면)만 골라 한 번에 인쇄하거나 PDF로 저장할 수 있어요!');
     } else if (stageNum === 1) {
       // 1단계 UI 활성화
       if (stage1Toolbar) stage1Toolbar.style.display = 'flex';

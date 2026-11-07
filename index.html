@@ -41,6 +41,9 @@
           <option value="17">공개문제 17번 (배타 운전 - LS 하나만 ➜ PB1 MC1 / T1 후 PB2 MC2·WL)</option>
           <option value="18">공개문제 18번 (선택 운전 - LS1만 ➜ PB1 MC1 / LS2만 ➜ PB2 MC2, t초 후 WL)</option>
         </select>
+        <button type="button" class="batch-print-trigger-btn" data-open-batch-print title="1~18번 공개문제에서 원하는 도면 페이지만 골라 한 번에 인쇄하거나 PDF로 저장합니다">
+          🖨️ 도면 일괄 출력
+        </button>
       </div>
     </div>
 
@@ -426,7 +429,17 @@
           <button class="doc-prev">◀ 이전</button>
           <span class="doc-page-label">1 / 11</span>
           <button class="doc-next">다음 ▶</button>
+          <div class="doc-quick-pages" title="주요 도면 페이지로 바로 이동">
+            <button type="button" class="doc-jump-btn" data-doc-jump="5">5쪽 배관도</button>
+            <button type="button" class="doc-jump-btn" data-doc-jump="6">6쪽 배치도</button>
+            <button type="button" class="doc-jump-btn" data-doc-jump="7">7쪽 시퀀스</button>
+            <button type="button" class="doc-jump-btn" data-doc-jump="8">8쪽 동작사항</button>
+            <button type="button" class="doc-jump-btn" data-doc-jump="9">9쪽 내부결선</button>
+          </div>
           <span class="doc-hint">← → 키로도 넘길 수 있어요</span>
+          <button type="button" class="doc-batch-print-btn" data-open-batch-print title="1~18번 공개문제에서 특정 페이지만 골라 일괄 인쇄/PDF 저장">
+            🖨️ 특정 페이지 일괄 출력
+          </button>
         </div>
         <div class="doc-page-wrap"><img id="doc-page-main" alt="공개문제 페이지"></div>
       </div>
